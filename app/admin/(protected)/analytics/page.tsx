@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 }
 
 async function getStats() {
-  const base = process.env.BACKEND_URL || "http://localhost:5005"
+  const base = process.env.BACKEND_URL || "https://rani-riwaaj-backend-ylbq.vercel.app/"
   const [prodRes, catRes] = await Promise.all([
     fetch(`${base}/api/products`,   { cache: "no-store" }),
     fetch(`${base}/api/categories`, { cache: "no-store" }),
