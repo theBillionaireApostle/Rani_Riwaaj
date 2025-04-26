@@ -1,0 +1,199 @@
+/* page.module.css */
+
+/* …existing variables / resets … */
+
+/* --- overall page --- */
+.page {
+    padding: calc(var(--header-height) + 2rem) 2rem 2rem;
+  }
+  
+  /* --- two–column grid --- */
+  .grid {
+    display: grid;
+    gap: 2.5rem;
+    /* 60 % gallery – 40 % details */
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  }
+  
+  /* ---------- gallery ---------- */
+  .galleryOuter {
+    display: flex;
+    gap: 1.25rem;
+  }
+  
+  /* vertical thumbs */
+  .thumbs {
+    display: flex;
+    flex-direction: column;
+    gap: .75rem;
+  }
+  
+  /* each thumb */
+  .thumb {
+    position: relative;
+    width: 72px;
+    aspect-ratio: 1 / 1;           /* perfect square */
+    border: 2px solid transparent;
+    border-radius: .5rem;
+    overflow: hidden;
+    transition: border .2s;
+  }
+  
+  /* tell the actual <img> inside a thumbnail not to distort */
+  .thumb :global(img) {
+    object-fit: cover;             /* fill & crop */
+    object-position: center;
+  }
+  
+  .thumbActive {
+    border-color: #00a67e;            /* highlight active */
+  }
+  
+  /* big hero image */
+  .hero {
+    position: relative;
+    flex: 1;
+    aspect-ratio: 3 / 4;              /* keeps portrait ratio */
+    border-radius: 1rem;
+    overflow: hidden;
+  }
+  
+  /* ---------- details ---------- */
+  .details {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+  
+  .price   { font-size: 1.5rem; font-weight: 600; color: #c62828; }
+  .desc    { line-height: 1.6; color: #444; max-width: 40ch; }
+  
+  .colorRow   { display: flex; gap: .5rem; }
+  .colorSwatch{
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    border: 1px solid #ddd;
+  }
+  
+  .sizeRow  { display: flex; flex-wrap: wrap; gap: .5rem; }
+  .sizeChip {
+    padding: .35rem .75rem;
+    border: 1px solid #ccc;
+    border-radius: .25rem;
+    font-size: .875rem;
+  }
+  
+  .actionBtns {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1rem;
+  }
+  .primaryBtn,
+  .secondaryBtn{
+    flex: 1;
+    padding: .9rem 1.2rem;
+    border-radius: .5rem;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .2s;
+  }
+  .primaryBtn   { background:#00a67e; color:#fff; border:none; }
+  .primaryBtn:hover{ background:#00906d; }
+  .secondaryBtn { background:#fff; color:#00a67e; border:2px solid #00a67e; }
+  .secondaryBtn:hover{ background:#eaf7f4; }
+  
+  /* ---------- responsive ---------- */
+  @media (max-width: 900px){
+    .grid{ grid-template-columns: 1fr; }
+    .galleryOuter{ flex-direction: column; align-items:center; }
+    .thumbs{ flex-direction: row; order:2; overflow-x:auto; }
+    .thumb{ width:60px; height:60px; }
+    .hero{ width:100%; max-width:480px; }
+  }
+  /* ---------- GLOBAL (route) LOADER ---------- */
+.pageCenter{
+    display:flex; align-items:center; justify-content:center;
+    min-height:60vh;           /* keeps header/footer visible */
+  }
+  .bigSpinner,
+  .imgSkeleton{
+    display:inline-block;
+    border-radius:50%;
+    border:.35rem solid #ececec;
+    border-top-color:#00a67e;
+    animation: spin .8s linear infinite;
+  }
+  
+  /* bigger for route loader */
+  .bigSpinner{ width:64px; height:64px; }
+  
+
+  
+  /* ---------- keyframes ---------- */
+  @keyframes spin{
+    to{ transform:rotate(360deg); }
+  }
+
+
+  /* page.module.css */
+
+/* …everything you already have … */
+
+/* ---------- gallery ---------- */
+.galleryOuter {
+    display: flex;
+    gap: 1.25rem;
+  }
+  
+  /* hero container keeps a nice portrait box */
+  .hero {
+    position: relative;
+    flex: 1;
+    aspect-ratio: 3 / 4;          /* 3 : 4 portrait */
+    max-width: 680px;             /* ⬅︎ OPTIONAL cap on very wide screens   */
+    border-radius: 1rem;
+    overflow: hidden;
+  }
+  
+  /* NEW — tell any <img> inside to keep its aspect ratio */
+  .hero :global(img) {             /* :global because Next.js scopes class names */
+    object-fit: contain;           /* ▶︎ or `cover` if you prefer a cropped fill */
+    object-position: center;
+  }
+  
+  /* thumbnails stay the same … */
+  
+  /* ---------- responsive ---------- */
+  @media (max-width: 900px) {
+    .grid           { grid-template-columns: 1fr; }
+    .galleryOuter   { flex-direction: column; align-items: center; }
+    .thumbs         { flex-direction: row; order: 2; overflow-x: auto; }
+    .thumb          { width: 60px; height: 60px; }
+    .hero           { width: 100%; max-width: 480px; }
+  }
+
+
+
+  
+
+
+
+  
+/* PRICE */
+.price {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--color-primary, #e63946);
+    margin-bottom: 1.5rem;
+  }
+
+
+
+  .title {
+    font-size: 2.25rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.75rem;
+    color: var(--color-dark, #333);
+  }

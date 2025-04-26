@@ -1,0 +1,138 @@
+:root {
+    --primary: #2962ff;
+    --primary-dark: #0039cb;
+    --whatsapp: #25d366;
+    --whatsapp-dark: #1ebe57;
+    --card-bg: #fff;
+    --card-shadow: rgba(0,0,0,0.08);
+    --heart: #e91e63;
+  }
+  
+  .grid {
+    display: grid;
+    gap: 2rem;
+    grid-template-columns: repeat(auto-fill,minmax(270px,1fr));
+  }
+  
+  @media (min-width:1200px){
+    .grid { grid-template-columns: repeat(4,1fr); }
+  }
+  
+  .card {
+    position: relative;
+    background: var(--card-bg);
+    border-radius: 8px;
+    box-shadow: 0 2px 8px var(--card-shadow);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: transform .2s ease;
+  }
+  .card:hover {
+    transform: translateY(-4px);
+  }
+  
+  /* invisible Link for entire card click */
+  .linkOverlay {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    bottom: 80px; /* leave space for buttons */
+    z-index: 1;
+  }
+  
+  /* wishlist heart */
+  .wishlistBtn {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    background: none;
+    border: none;
+    color: var(--heart);
+    font-size: 1.4rem;
+    z-index: 2;
+    cursor: pointer;
+  }
+  .wishlistBtn:hover {
+    opacity: 0.8;
+  }
+  
+  /* image */
+  .imageWrapper {
+    position: relative;
+    width: 100%;
+    height: 260px;
+  }
+  .image {
+    object-fit: cover;
+  }
+  
+  /* text */
+  .name {
+    margin: 1rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #222;
+  }
+  .desc {
+    margin: 0 1rem 0.75rem;
+    font-size: 0.95rem;
+    color: #555;
+    flex: 1;
+  }
+  .price {
+    margin: 0 1rem 1rem;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #000;
+  }
+  
+  /* buttons row */
+  /* Replace your existing .cardButtons */
+.cardButtons {
+    display: flex;
+    flex-direction: column;    /* ← stack items vertically */
+    gap: 0.75rem;               /* space between the buttons */
+    padding: 0 1rem 1rem;
+    margin-top: auto;
+    z-index: 2;
+  }
+  
+  /* Ensure each button fills the width */
+  .addButton,
+  .whatsappButton {
+    width: 100%;               /* ← full width */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    padding: 0.65rem;
+    font-size: 0.95rem;
+    border: none;
+    border-radius: 4px;
+    color: #fff;
+    cursor: pointer;
+    transition: background .2s, transform .2s;
+  }
+  
+  .addButton {
+    background: var(--primary);
+  }
+  .addButton:hover {
+    background: var(--primary-dark);
+    transform: scale(1.02);
+  }
+  .whatsappButton {
+    background: var(--whatsapp);
+  }
+  .whatsappButton:hover {
+    background: var(--whatsapp-dark);
+    transform: scale(1.02);
+  }
+  
+  /* empty state */
+  .empty {
+    grid-column: 1/-1;
+    text-align: center;
+    color: #777;
+    padding: 2rem 0;
+  }
