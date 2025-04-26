@@ -44,6 +44,14 @@
 --transition-speed: 0.3s;
 --border-radius: 8px;
 
+ --primary: #2962ff;
+    --primary-dark: #0039cb;
+    --whatsapp: #25d366;
+    --whatsapp-dark: #1ebe57;
+    --card-bg: #fff;
+    --card-shadow: rgba(0,0,0,0.08);
+    --heart: #e91e63;
+
 
 --color-bg: #ffffff;       /* Page background */
 --color-text: #333333;     /* Default text color */
