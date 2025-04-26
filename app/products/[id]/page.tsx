@@ -10,7 +10,7 @@
     /*                           API helper                               */
     /* ------------------------------------------------------------------ */
     const API_BASE =
-      process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5005";
+      process.env.NEXT_PUBLIC_API_URL ?? "https://rani-riwaaj-backend-ylbq.vercel.app/";
     
     /* ------------------------------------------------------------------ */
     /*                     <head>  dynamic metadata                       */
