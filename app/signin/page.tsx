@@ -43,7 +43,7 @@ export default function SignInPage() {
     async function createUserInDB() {
       if (user) {
         try {
-          const res = await fetch("/api/users", {
+          const res = await fetch("https://rani-riwaaj-backend-ylbq.vercel.app/api/users", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
