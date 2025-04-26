@@ -9,7 +9,7 @@ export const metadata = {
 // Server-side function to fetch products.
 async function getProducts() {
   // Use NEXT_PUBLIC_SITE_URL if provided; otherwise, default to localhost.
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://rani-riwaaj-backend-ylbq.vercel.app/";
   // Create an absolute URL using the URL constructor.
   const url = new URL("/api/products", baseUrl).toString();
   const res = await fetch(url, { cache: "no-store" });
