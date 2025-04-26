@@ -130,7 +130,7 @@ export default function Dashboard({ products: initialProducts }: DashboardProps)
 useEffect(() => {
   (async () => {
     try {
-      const res = await fetch("http://localhost:5005/api/categories");
+      const res = await fetch("https://rani-riwaaj-backend-ylbq.vercel.app/api/categories");
       if (!res.ok) throw new Error("Failed to load categories");
       const data = await res.json();
       setCategories(data);
@@ -324,7 +324,7 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
   const handleDelete = useCallback(async (productId: string) => {
     if (!confirm("Are you sure you want to delete this product?")) return;
     try {
-      const res = await fetch(`http://localhost:5005/api/products/${productId}`, { method: "DELETE" });
+      const res = await fetch(`https://rani-riwaaj-backend-ylbq.vercel.app/api/products/${productId}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Failed to delete the product");
       setProducts((prev) => prev.filter((p) => p._id !== productId));
       if (!toast.isActive("delete-" + productId))
@@ -338,7 +338,7 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
   const handleToggle = useCallback(async (product: Product) => {
     try {
       const updatedProduct = { ...product, published: !product.published };
-      const res = await fetch(`http://localhost:5005/api/products/${product._id}/toggle`, {
+      const res = await fetch(`https://rani-riwaaj-backend-ylbq.vercel.app/api/products/${product._id}/toggle`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ published: updatedProduct.published }),
@@ -388,7 +388,7 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const uploadedGlobal: { url: string; publicId: string }[] = [];
       for (const file of validGlobals) {
         const b64 = await toBase64(file);
-        const up = await fetch("http://localhost:5005/api/images/upload", {
+        const up = await fetch("https://rani-riwaaj-backend-ylbq.vercel.app/api/images/upload", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ imageBase64: b64, folder: "phulkari_products" }),
@@ -405,7 +405,7 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         uploadedByColor[clr] = [];
         for (const f of files) {
           const b64 = await toBase64(f);
-          const up = await fetch("http://localhost:5005/api/images/upload", {
+          const up = await fetch("https://rani-riwaaj-backend-ylbq.vercel.app/api/images/upload", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ imageBase64: b64, folder: "phulkari_products" }),
@@ -432,7 +432,7 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       };
   
       /* ---------- 6. save product ---------- */
-      const res = await fetch("http://localhost:5005/api/products", {
+      const res = await fetch("https://rani-riwaaj-backend-ylbq.vercel.app/api/products", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
