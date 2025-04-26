@@ -102,7 +102,7 @@ export default function AdminLoginPage() {
   try {
     // If you are returning a token in JSON, credentials: "include" is not strictly needed
     // but won't break anything if the server sets it up for CORS.
-    const res = await fetch("https://phulkari-bagh-backend.vercel.app/admin/login", {
+    const res = await fetch("https://rani-riwaaj-backend-ylbq.vercel.app/admin/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       // credentials: "include", // Only needed if you rely on cookies
