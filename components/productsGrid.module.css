@@ -1,12 +1,4 @@
-:root {
-    --primary: #2962ff;
-    --primary-dark: #0039cb;
-    --whatsapp: #25d366;
-    --whatsapp-dark: #1ebe57;
-    --card-bg: #fff;
-    --card-shadow: rgba(0,0,0,0.08);
-    --heart: #e91e63;
-  }
+
   
   .grid {
     display: grid;
