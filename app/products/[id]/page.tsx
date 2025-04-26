@@ -9,8 +9,7 @@
     /* ------------------------------------------------------------------ */
     /*                           API helper                               */
     /* ------------------------------------------------------------------ */
-    const API_BASE =
-     "https://rani-riwaaj-backend-ylbq.vercel.app/";
+    const API_BASE = "https://rani-riwaaj-backend-ylbq.vercel.app/";
     
     /* ------------------------------------------------------------------ */
     /*                     <head>  dynamic metadata                       */
@@ -18,7 +17,7 @@
     export async function generateMetadata(
       { params }: { params: { id: string } }
     ): Promise<Metadata> {
-      const res = await fetch(`${API_BASE}/api/products/${params.id}`, {
+      const res = await fetch(`https://rani-riwaaj-backend-ylbq.vercel.app/api/products/${params.id}`, {
         cache: "no-store",
       });
       if (!res.ok) return {};
@@ -40,7 +39,7 @@
     }: {
       params: { id: string };
     }) {
-      const res = await fetch(`${API_BASE}/api/products/${params.id}`, {
+      const res = await fetch(`https://rani-riwaaj-backend-ylbq.vercel.app/api/products/${params.id}`, {
         cache: "no-store",
       });
     
