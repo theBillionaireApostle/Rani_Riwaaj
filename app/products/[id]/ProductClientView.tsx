@@ -33,7 +33,7 @@ export default function ProductClientView({ product, gallery }: Props) {
   const [busy,       setBusy]       = useState(false);
 
   const router   = useRouter();
-  const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5005";
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "https://rani-riwaaj-backend-ylbq.vercel.app";
 
   // Watch auth state
   useEffect(() => {
