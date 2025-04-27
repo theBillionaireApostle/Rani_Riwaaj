@@ -209,7 +209,7 @@ export default function CartPage() {
 
     return (
       <nav className={styles.nav}>
-        <div className={styles.logo}>Rani Riwaaj</div>
+        <div className={styles.logo}>Phulkari Bagh</div>
         <div className={styles.desktopNavLinks}>
           <Link href="/">Home</Link>
           <Link href="/shop">Shop</Link>
