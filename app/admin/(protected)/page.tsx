@@ -2,8 +2,8 @@
 import Dashboard from "./Dashboard.client"; // Import the client component
 
 export const metadata = {
-  title: "Admin Dashboard | Phulkari Bagh",
-  description: "Manage products for Phulkari Bagh",
+  title: "Admin Dashboard | Rani Riwaaj",
+  description: "Manage products for Rani Riwaaj",
 };
 
 // Server-side function to fetch products.
