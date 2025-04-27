@@ -454,7 +454,7 @@ setProducts(prev => [newProduct, ...prev]);
   const HeaderComp = memo(function HeaderComp() {
     return (
       <header className={styles.header}>
-        <div className={styles.logo}>Phulkari Bagh</div>
+        <div className={styles.logo}>Rani Riwaaj</div>
         <nav className={styles.navLinks}>
           <Link href="/">Home</Link>
           <Link href="/shop">Shop</Link>
