@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 }
 
 async function getCategories() {
-  const base = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:5005"
+  const base = process.env.NEXT_PUBLIC_SITE_URL ?? "https://rani-riwaaj-backend-ylbq.vercel.app"
   const res = await fetch(new URL("/api/categories", base).toString(), {
     cache: "no-store",
   })
