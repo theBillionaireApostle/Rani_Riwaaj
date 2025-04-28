@@ -94,7 +94,7 @@ export default function Home() {
   useEffect(() => {
     async function fetchProducts() {
       try {
-        const res = await fetch("https://rani-riwaaj-backend-ylbq.vercel.app/api/products");
+        const res = await fetch("http://localhost:5005/api/products");
         if (!res.ok) {
           throw new Error("Failed to fetch products");
         }
@@ -114,7 +114,7 @@ export default function Home() {
    useEffect(() => {
     async function fetchCategories() {
       try {
-        const res = await fetch("https://rani-riwaaj-backend-ylbq.vercel.app/api/categories");
+        const res = await fetch("http://localhost:5005/api/categories");
         if (!res.ok) throw new Error("Failed to fetch categories");
         setCategories(await res.json());
       } catch (err) {
@@ -140,7 +140,7 @@ export default function Home() {
     if (user) {
       async function fetchCart() {
         try {
-          const res = await fetch(`https://rani-riwaaj-backend-ylbq.vercel.app/api/cart?userId=${user.uid}`);
+          const res = await fetch(`http://localhost:5005/api/cart?userId=${user.uid}`);
           if (!res.ok) {
             throw new Error("Failed to fetch cart");
           }
@@ -270,7 +270,7 @@ export default function Home() {
     setCartCount(newCartCount);
 
     try {
-      const res = await fetch("https://rani-riwaaj-backend-ylbq.vercel.app/api/cart", {
+      const res = await fetch("http://localhost:5005/api/cart", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -482,94 +482,107 @@ export default function Home() {
 
       {/* Products Section with Loader */}
      {/* Products Section with Loader */}
-<section id="shop" className={styles.featuredProducts}>
+     <section id="shop" className={styles.featuredProducts}>
   <h2>Featured Collections</h2>
+
   {productsLoading ? (
     <div className={styles.productsLoader}>
       <div className={styles.spinner}></div>
     </div>
   ) : (
-    <div className={styles.productList}>
+    /* ← Responsive wrapper: grid on desktop, scroll on mobile */
+    <div className={styles.productsWrapper}>
       {visibleProducts.map((product) => (
-        <Link            /* NEW */
-        key={product._id}
-        href={`/products/${product._id}`}   // or `/products/${product.slug}`
-        className={styles.productItemLink}  // (optional) for hover styling
-      >
-        <div key={product._id} className={styles.productItem}>
-          <div className={styles.productTopBar}>
-            <button className={styles.wishlistBtn} aria-label="Add to Wishlist">
-              <FontAwesomeIcon icon={faHeart} />
-            </button>
-            {product.justIn && (
-              <div className={styles.justInLabel}>Just In</div>
-            )}
-          </div>
-          <div className={styles.productImage}>
-            <Image
-              src={product.defaultImage?.url || "/placeholder.png"}
-              alt={product.name}
-              fill
-              style={{ objectFit: "contain" }}
-              sizes="(max-width: 768px) 100vw, 400px"
-              className={styles.productImg}
-            />
-          </div>
-          <div className={styles.productInfo}>
-            {/* infoContent holds variable content */}
-            <div className={styles.infoContent}>
-              <h3 className={styles.productName}>{product.name}</h3>
-              {/* <p className={styles.productDesc}>{product.desc}</p> */}
-              <div className={styles.price}>Rs {product.price}</div>
-              {product.colors && (
-                <div className={styles.colorRow}>
-                  {product.colors.map((color, idx) => (
-                    <span
-                      key={idx}
-                      className={styles.swatch}
-                      style={{ backgroundColor: color }}
-                    ></span>
-                  ))}
-                </div>
-              )}
-              {product.sizes && product.sizes.length > 0 && (
-                <div className={styles.sizeRow}>
-                  {product.sizes.map((size, idx) => (
-                    <button key={idx} className={styles.sizeOption}>
-                      {size}
-                    </button>
-                  ))}
-                </div>
+        <Link
+          key={product._id}
+          href={`/products/${product._id}`}
+          className={styles.productItemLink}
+        >
+          <div className={styles.productItem}>
+            <div className={styles.productTopBar}>
+              <button
+                className={styles.wishlistBtn}
+                aria-label="Add to Wishlist"
+              >
+                <FontAwesomeIcon icon={faHeart} />
+              </button>
+              {product.justIn && (
+                <div className={styles.justInLabel}>Just In</div>
               )}
             </div>
-            {/* actionRow always appears at the bottom */}
-            <div className={styles.actionRow}>
-              <button
-              
-              onClick={e => {        // STOP navigation when clicking this
-                e.stopPropagation();
-                handleAddToCart(product);
-              }}
-                className={styles.actionButton}
-              >
-                <FontAwesomeIcon icon={faShoppingCart} className={styles.cartIcon} /> Add to Cart
-              </button>
-              <button
-                 onClick={e => {
-                  e.stopPropagation();
-                  handleWhatsAppEnquiry(product);
-                }}
-                className={styles.whatsappButton}
-              >
-                <FontAwesomeIcon icon={faWhatsapp} className={styles.whatsappIcon} /> WhatsApp Enquiry
-              </button>
+
+            <div className={styles.productImage}>
+              <Image
+                src={product.defaultImage?.url || "/placeholder.png"}
+                alt={product.name}
+                fill
+                style={{ objectFit: "contain" }}
+                sizes="(max-width: 768px) 100vw, 400px"
+                className={styles.productImg}
+              />
+            </div>
+
+            <div className={styles.productInfo}>
+              <div className={styles.infoContent}>
+                <h3 className={styles.productName}>{product.name}</h3>
+                <div className={styles.price}>Rs {product.price}</div>
+                {product.colors && (
+                  <div className={styles.colorRow}>
+                    {product.colors.map((color, idx) => (
+                      <span
+                        key={idx}
+                        className={styles.swatch}
+                        style={{ backgroundColor: color }}
+                      />
+                    ))}
+                  </div>
+                )}
+                {product.sizes && product.sizes.length > 0 && (
+                  <div className={styles.sizeRow}>
+                    {product.sizes.map((size, idx) => (
+                      <button key={idx} className={styles.sizeOption}>
+                        {size}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className={styles.actionRow}>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleAddToCart(product);
+                  }}
+                  className={styles.actionButton}
+                >
+                  <FontAwesomeIcon
+                    icon={faShoppingCart}
+                    className={styles.cartIcon}
+                  />{" "}
+                  Add to Cart
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleWhatsAppEnquiry(product);
+                  }}
+                  className={styles.whatsappButton}
+                >
+                  <FontAwesomeIcon
+                    icon={faWhatsapp}
+                    className={styles.whatsappIcon}
+                  />{" "}
+                  WhatsApp Enquiry
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-        </Link>  
+        </Link>
       ))}
     </div>
   )}
+
   {/* Sentinel element for lazy loading */}
   <div ref={loadMoreRef} className={styles.loadMore}></div>
 </section>
