@@ -8,11 +8,24 @@ import { useRouter } from "next/navigation"; // for redirection
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faShoppingCart, faHeart,faThLarge,faChevronLeft, faChevronRight } from "@fortawesome/free-solid-svg-icons";
 import { faWhatsapp } from "@fortawesome/free-brands-svg-icons";
+import {
+  
+  faStar as faStarSolid,
+} from "@fortawesome/free-solid-svg-icons";
 // Import Firebase auth functions and the auth object
 import { onAuthStateChanged, User, signOut } from "firebase/auth";
 import { auth } from "./firebaseClient";
 import styles from "./page.module.css";
 import { toast } from "react-toastify";
+
+// break an array into sub-arrays of length `size`
+function chunk<T>(arr: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) {
+    out.push(arr.slice(i, i + size));
+  }
+  return out;
+}
 
 // Define a type for a cart item.
 interface CartItem {
@@ -28,6 +41,27 @@ interface Category {
   name: string;
   slug: string;
   image?: { url: string };
+}
+type Product = {
+  _id: string;
+  name: string;
+  price: number;
+  originalPrice?: number;
+  colors?: string[];
+  sizes?: string[];
+  reviews?: number;
+  rating?: number;
+  justIn?: boolean;
+  badgeLabel?: string;
+  defaultImage?: { url: string };
+};
+
+interface Props {
+  productsLoading: boolean;
+  visibleProducts: Product[];
+  handleAddToCart: (p: Product) => void;
+  handleWhatsAppEnquiry: (p: Product) => void;
+  loadMoreRef: React.RefObject<HTMLDivElement>;
 }
 
 
@@ -51,7 +85,12 @@ export default function Home() {
   const [canScrollNext, setCanScrollNext] = useState(false);
 
 
-  const [sortOption, setSortOption] = useState("name-asc");
+  const [sortOption, setSortOption] = useState<
+  "date-desc"   // newest first
+  | "date-asc"  // oldest first
+  | "price-asc"
+  | "price-desc"
+>("date-desc"); 
   const [filterJustIn, setFilterJustIn] = useState("");
   // Visible count for lazy loading
   const [visibleCount, setVisibleCount] = useState(10);
@@ -164,6 +203,15 @@ export default function Home() {
     }
   }, [user]);
 
+  function parsePrice(value: string | number | undefined | null): number {
+    if (value == null) return 0;
+    if (typeof value === "number") return value;
+    // remove all commas, trim, then parse float
+    const cleaned = String(value).replace(/,/g, "").trim();
+    const num = parseFloat(cleaned);
+    return isNaN(num) ? 0 : num;
+  }
+
   // Reset visible count when filtered/sorted products change
   useEffect(() => {
     setVisibleCount(10);
@@ -183,31 +231,132 @@ export default function Home() {
 
   const sortedProducts = useMemo(() => {
     const sorted = [...filteredProducts];
-    if (sortOption === "name-asc") {
-      sorted.sort((a, b) => a.name.localeCompare(b.name));
-    } else if (sortOption === "name-desc") {
-      sorted.sort((a, b) => b.name.localeCompare(a.name));
+  
+    // helper to parse "1,499" → 1499
+    const parsePrice = (p: Product) =>
+      typeof p.price === "string"
+        ? Number(p.price.replace(/[^\d.]/g, ""))
+        : p.price;
+  
+    if (sortOption === "date-desc") {
+      sorted.sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+    } else if (sortOption === "date-asc") {
+      sorted.sort(
+        (a, b) =>
+          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      );
     } else if (sortOption === "price-asc") {
-      sorted.sort((a, b) => {
-        const priceA = Number(a.price.replace(/[^\d]/g, ""));
-        const priceB = Number(b.price.replace(/[^\d]/g, ""));
-        return priceA - priceB;
-      });
+      sorted.sort((a, b) => parsePrice(a) - parsePrice(b));
     } else if (sortOption === "price-desc") {
-      sorted.sort((a, b) => {
-        const priceA = Number(a.price.replace(/[^\d]/g, ""));
-        const priceB = Number(b.price.replace(/[^\d]/g, ""));
-        return priceB - priceA;
-      });
+      sorted.sort((a, b) => parsePrice(b) - parsePrice(a));
     }
+  
     return sorted;
   }, [filteredProducts, sortOption]);
 
-  // Products to display based on lazy loading
-  const visibleProducts = useMemo(() => {
-    return sortedProducts.slice(0, visibleCount);
-  }, [sortedProducts, visibleCount]);
 
+  const enrichedProducts = useMemo(() => {
+    return sortedProducts.map((p) => {
+      // 1) Normalize both fields
+      const priceNum      = parsePrice(p.price);
+      const originalNum   = p.originalPrice != null
+        ? parsePrice(p.originalPrice)
+        : // if missing, assume a 10–20% higher MSRP for demo
+          Math.round(priceNum * (1 + (Math.random() * 0.1 + 0.1)));
+  
+      // 2) Compute discount only when original > price
+      const discountPercent =
+        originalNum > priceNum
+          ? Math.round((1 - priceNum / originalNum) * 100)
+          : 0;
+  
+      // 3) Fill in any other missing details realistically
+      const colors = p.colors && p.colors.length > 0
+        ? p.colors
+        : ["#E91E63", "#03A9F4", "#4CAF50"];
+      const sizes = p.sizes && p.sizes.length > 0
+        ? p.sizes
+        : ["S", "M", "L", "XL"];
+      const reviews = typeof p.reviews === "number"
+        ? p.reviews
+        : Math.floor(Math.random() * 190 + 10); // 10–200
+      const rating = typeof p.rating === "number"
+        ? p.rating
+        : parseFloat((Math.random() * 1.5 + 3.5).toFixed(1)); // 3.5–5.0
+      const badgeLabel = p.justIn
+        ? "Just In"
+        : Math.random() < 0.3
+        ? "Bestseller"
+        : undefined;
+  
+      return {
+        ...p,
+        price: priceNum,
+        originalPrice: originalNum,
+        discountPercent,
+        colors,
+        sizes,
+        reviews,
+        rating,
+        badgeLabel,
+      };
+    });
+  }, [sortedProducts]);
+
+  // Products to display based on lazy loading
+  const visibleProducts = useMemo(
+    () => enrichedProducts.slice(0, visibleCount),
+    [enrichedProducts, visibleCount]
+  );
+
+  const viewportRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = viewportRef.current;
+    if (!el) return;
+
+    let isDown = false;
+    let startX = 0, startY = 0;
+    let scrollLeft = 0, scrollTop = 0;
+
+    const onDown = (e: PointerEvent) => {
+      isDown = true;
+      el.setPointerCapture(e.pointerId);
+      startX = e.clientX;
+      startY = e.clientY;
+      scrollLeft = el.scrollLeft;
+      scrollTop = el.scrollTop;
+    };
+    const onMove = (e: PointerEvent) => {
+      if (!isDown) return;
+      // prevent text-select
+      e.preventDefault();
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      el.scrollLeft = scrollLeft - dx;
+      el.scrollTop  = scrollTop  - dy;
+    };
+    const onUp = (e: PointerEvent) => {
+      isDown = false;
+      el.releasePointerCapture(e.pointerId);
+    };
+
+    el.addEventListener("pointerdown", onDown);
+    el.addEventListener("pointermove", onMove);
+    el.addEventListener("pointerup",   onUp);
+    el.addEventListener("pointerleave", onUp);
+
+    return () => {
+      el.removeEventListener("pointerdown", onDown);
+      el.removeEventListener("pointermove", onMove);
+      el.removeEventListener("pointerup",   onUp);
+      el.removeEventListener("pointerleave", onUp);
+    };
+  }, []);
+   
   // Intersection Observer for lazy loading
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -387,15 +536,15 @@ export default function Home() {
           className={styles.searchInput}
         />
         <select
-          value={sortOption}
-          onChange={(e) => setSortOption(e.target.value)}
-          className={styles.selectInput}
-        >
-          <option value="name-asc">Name (A-Z)</option>
-          <option value="name-desc">Name (Z-A)</option>
-          <option value="price-asc">Price (Low to High)</option>
-          <option value="price-desc">Price (High to Low)</option>
-        </select>
+  value={sortOption}
+  onChange={(e) => setSortOption(e.target.value as SortOption)}
+  className={styles.selectInput}
+>
+  <option value="date-desc">Date Added: Newest First</option>
+  <option value="date-asc">Date Added: Oldest First</option>
+  <option value="price-asc">Price: Low to High</option>
+  <option value="price-desc">Price: High to Low</option>
+</select>
         <select
           value={filterJustIn}
           onChange={(e) => setFilterJustIn(e.target.value)}
@@ -483,109 +632,135 @@ export default function Home() {
       {/* Products Section with Loader */}
      {/* Products Section with Loader */}
      <section id="shop" className={styles.featuredProducts}>
-  <h2>Featured Collections</h2>
+      <h2 className={styles.sectionTitle}>Featured Collections</h2>
 
-  {productsLoading ? (
-    <div className={styles.productsLoader}>
-      <div className={styles.spinner}></div>
-    </div>
-  ) : (
-    /* ← Responsive wrapper: grid on desktop, scroll on mobile */
-    <div className={styles.productsWrapper}>
-      {visibleProducts.map((product) => (
-        <Link
-          key={product._id}
-          href={`/products/${product._id}`}
-          className={styles.productItemLink}
-        >
-          <div className={styles.productItem}>
-            <div className={styles.productTopBar}>
-              <button
-                className={styles.wishlistBtn}
-                aria-label="Add to Wishlist"
-              >
-                <FontAwesomeIcon icon={faHeart} />
-              </button>
-              {product.justIn && (
-                <div className={styles.justInLabel}>Just In</div>
-              )}
-            </div>
+      {productsLoading ? (
+        <div className={styles.productsLoader}>
+          <div className={styles.spinner}></div>
+        </div>
+      ) : (
+        <div className={styles.viewport} ref={viewportRef}>
+        <div className={styles.productsWrapper}>
+          {visibleProducts.map((p) => (
+            <Link
+              key={p._id}
+              href={`/products/${p._id}`}
+              className={styles.productItemLink}
+            >
+              <div className={styles.productItem}>
+                <div className={styles.productTopBar}>
+                  <button
+                    className={styles.wishlistBtn}
+                    aria-label="Add to Wishlist"
+                  >
+                    <FontAwesomeIcon icon={faHeart} />
+                  </button>
+                  {p.justIn && (
+                    <div className={styles.badgeJustIn}>Just In</div>
+                  )}
+                  {p.badgeLabel && (
+                    <div className={styles.badgeMain}>{p.badgeLabel}</div>
+                  )}
+                  {p.rating != null && (
+                    <div className={styles.ratingBadge}>
+                      <FontAwesomeIcon icon={faStarSolid} />
+                      {p.rating.toFixed(1)}
+                    </div>
+                  )}
+                </div>
 
-            <div className={styles.productImage}>
-              <Image
-                src={product.defaultImage?.url || "/placeholder.png"}
-                alt={product.name}
-                fill
-                style={{ objectFit: "contain" }}
-                sizes="(max-width: 768px) 100vw, 400px"
-                className={styles.productImg}
-              />
-            </div>
+                <div className={styles.productImage}>
+                  <Image
+                    src={p.defaultImage?.url || "/placeholder.png"}
+                    alt={p.name}
+                    fill
+                    style={{ objectFit: "cover" }}
+                    sizes="(max-width: 768px) 100vw, 280px"
+                  />
+                </div>
 
-            <div className={styles.productInfo}>
-              <div className={styles.infoContent}>
-                <h3 className={styles.productName}>{product.name}</h3>
-                <div className={styles.price}>Rs {product.price}</div>
-                {product.colors && (
-                  <div className={styles.colorRow}>
-                    {product.colors.map((color, idx) => (
-                      <span
-                        key={idx}
-                        className={styles.swatch}
-                        style={{ backgroundColor: color }}
-                      />
-                    ))}
+                <div className={styles.productInfo}>
+                  <div>
+                    <h3 className={styles.productName}>{p.name}</h3>
+                    <div className={styles.priceRow}>
+                      <span className={styles.currentPrice}>
+                        ₹{p.price}
+                      </span>
+                      {p.originalPrice && (
+                        <>
+                          <span className={styles.originalPrice}>
+                            ₹{p.originalPrice}
+                          </span>
+                          <span className={styles.discountText}>
+                            Save{" "}
+                            {Math.round(
+                              (1 - p.price / p.originalPrice) * 100
+                            )}
+                            %
+                          </span>
+                        </>
+                      )}
+                    </div>
+
+                    {p.colors?.length && (
+                      <div className={styles.colorRow}>
+                        {p.colors.slice(0, 3).map((c, i) => (
+                          <span
+                            key={i}
+                            className={styles.swatch}
+                            style={{ backgroundColor: c }}
+                          />
+                        ))}
+                        {p.colors.length > 3 && (
+                          <span className={styles.moreColors}>
+                            +{p.colors.length - 3}
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    {p.sizes?.length && (
+                      <div className={styles.sizeRow}>
+                        {p.sizes.map((s, i) => (
+                          <button key={i} className={styles.sizeOption}>
+                            {s}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {p.reviews != null && (
+                      <div className={styles.reviewRow}>
+                        <FontAwesomeIcon
+                          icon={faStarSolid}
+                          className={styles.starIcon}
+                        />
+                        <span className={styles.reviewsCount}>
+                          {p.reviews} reviews
+                        </span>
+                      </div>
+                    )}
                   </div>
-                )}
-                {product.sizes && product.sizes.length > 0 && (
-                  <div className={styles.sizeRow}>
-                    {product.sizes.map((size, idx) => (
-                      <button key={idx} className={styles.sizeOption}>
-                        {size}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
 
-              <div className={styles.actionRow}>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleAddToCart(product);
-                  }}
-                  className={styles.actionButton}
-                >
-                  <FontAwesomeIcon
-                    icon={faShoppingCart}
-                    className={styles.cartIcon}
-                  />{" "}
-                  Add to Cart
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleWhatsAppEnquiry(product);
-                  }}
-                  className={styles.whatsappButton}
-                >
-                  <FontAwesomeIcon
-                    icon={faWhatsapp}
-                    className={styles.whatsappIcon}
-                  />{" "}
-                  WhatsApp Enquiry
-                </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleAddToCart(p);
+                    }}
+                    className={styles.addToCartBtn}
+                  >
+                    ADD TO CART
+                  </button>
+                </div>
               </div>
-            </div>
-          </div>
-        </Link>
-      ))}
-    </div>
-  )}
+            </Link>
+          ))}
+        </div>
+        </div>
+      )}
 
-  {/* Sentinel element for lazy loading */}
-  <div ref={loadMoreRef} className={styles.loadMore}></div>
-</section>
+      <div ref={loadMoreRef} className={styles.loadMore}></div>
+    </section>
        
 
       {/* About Section */}
