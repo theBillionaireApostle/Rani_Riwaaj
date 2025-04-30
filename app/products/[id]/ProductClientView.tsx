@@ -1,102 +1,112 @@
+// app/products/[id]/ProductClientView.tsx
 "use client";
 
 import { useEffect, useState } from "react";
-import Image                     from "next/image";
-import { useRouter }             from "next/navigation";
-import { toast }                 from "react-toastify";
-import { FontAwesomeIcon }       from "@fortawesome/react-fontawesome";
-import { faShoppingCart }        from "@fortawesome/free-solid-svg-icons";
-import { faWhatsapp }            from "@fortawesome/free-brands-svg-icons";
+import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { toast } from "react-toastify";
+import {
+  faStar as faStarSolid,
+  faShoppingCart,
+} from "@fortawesome/free-solid-svg-icons";
+import { faWhatsapp } from "@fortawesome/free-brands-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { onAuthStateChanged, User } from "firebase/auth";
-import { auth }                      from "../../firebaseClient";
+import { auth } from "../../firebaseClient";
 
-import type { GalleryImage }      from "./page";
-import styles                      from "./page.module.css";
+import type { GalleryImage } from "./page";
+import styles from "./page.module.css";
 
 interface Props {
   product: {
     _id: string;
     name: string;
-    price: string;
     desc: string;
+    price: string;           // e.g. "1,499"
+    mrp: string;             // e.g. "1,799"
+    savePct: number;         // e.g. 18
+    rating: number;          // 0–5
+    reviewsCount: number;    // e.g. 86
+    giftWrapFee: number;     // e.g. 200
+    sku: string;             // e.g. "A1B2C3"
     colors?: string[];
     sizes?: string[];
   };
   gallery: GalleryImage[];
+  whatsappNumber: string;    // e.g. "+919041798129"
 }
 
-export default function ProductClientView({ product, gallery }: Props) {
-  const [index,      setIndex]      = useState(0);
+export default function ProductClientView({
+  product,
+  gallery,
+  whatsappNumber,
+}: Props) {
+  const router = useRouter();
+  const [index, setIndex] = useState(0);
   const [heroLoaded, setHeroLoaded] = useState(false);
-  const [user,       setUser]       = useState<User|null>(null);
-  const [busy,       setBusy]       = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [giftWrap, setGiftWrap] = useState(false);
 
-  const router   = useRouter();
-  const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "https://rani-riwaaj-backend-ylbq.vercel.app";
-
-  // Watch auth state
+  // Auth listener
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (u) => setUser(u));
-    return unsubscribe;
+    const unsub = onAuthStateChanged(auth, (u) => setUser(u));
+    return () => unsub();
   }, []);
 
-  // reset skeleton whenever hero image changes
-  useEffect(() => {
-    setHeroLoaded(false);
-  }, [index]);
+  // reset skeleton on main image change
+  useEffect(() => setHeroLoaded(false), [index]);
 
+  // ── Gallery selector ──
   const handleSelect = (i: number) => {
     if (i !== index) setIndex(i);
   };
 
+  // ── Add to Cart ──
   async function handleAddToCart() {
     if (!user) {
       router.push("/signin");
       return;
     }
-    const uid = user.uid;
-
     setBusy(true);
     try {
       const res = await fetch(
-        `${API_BASE}/api/cart?userId=${encodeURIComponent(uid)}`,
+        `/api/cart?userId=${encodeURIComponent(user.uid)}`,
         {
-          method:  "POST",
+          method: "POST",
           headers: { "Content-Type": "application/json" },
-          body:    JSON.stringify({
+          body: JSON.stringify({
             items: [
               {
                 productId: product._id,
-                name:      product.name,
-                price:     Number(product.price.replace(/[^\d]/g, "")),
-                quantity:  1,
+                name: product.name,
+                price: Number(product.price.replace(/[^\d]/g, "")),
+                quantity: 1,
               },
             ],
           }),
         }
       );
-
       const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.message || "Failed to update cart");
-      }
-
-      toast.success("Added to cart!", { autoClose: 2200 });
+      if (!res.ok) throw new Error(data.message || "Failed to add to cart");
+      toast.success("Added to cart!", { autoClose: 2000 });
     } catch (err: any) {
-      console.error("Cart update error:", err);
-      toast.error(err.message || "Could not add item – please try again.", { autoClose: 2500 });
+      toast.error(err.message || "Could not add – please try again.", {
+        autoClose: 2500,
+      });
     } finally {
       setBusy(false);
     }
   }
 
+  // ── WhatsApp Enquiry ──
   function handleWhatsApp() {
     const msg = encodeURIComponent(
-      `I'm interested in ${product.name} priced at Rs ${product.price}. Please send me more details.`
+      `I'm interested in *${product.name}* (SKU: ${product.sku}) priced at ₹${product.price}.`
     );
     window.open(
-      `https://api.whatsapp.com/send?phone=+919510394742&text=${msg}`,
+      `https://api.whatsapp.com/send?phone=${whatsappNumber}&text=${msg}`,
       "_blank"
     );
   }
@@ -104,13 +114,15 @@ export default function ProductClientView({ product, gallery }: Props) {
   return (
     <main className={styles.page}>
       <div className={styles.grid}>
-        {/* GALLERY */}
+        {/* ── GALLERY (unchanged) ── */}
         <div className={styles.galleryOuter}>
           <div className={styles.thumbs}>
             {gallery.map((img, i) => (
               <button
                 key={img.url + i}
-                className={`${styles.thumb} ${i === index ? styles.thumbActive : ""}`}
+                className={`${styles.thumb} ${
+                  i === index ? styles.thumbActive : ""
+                }`}
                 onClick={() => handleSelect(i)}
                 aria-label={`View image ${i + 1}`}
                 type="button"
@@ -133,33 +145,73 @@ export default function ProductClientView({ product, gallery }: Props) {
           </div>
         </div>
 
-        {/* DETAILS */}
+        {/* ── DETAILS (polished) ── */}
         <section className={styles.details}>
-        <h1 className={styles.title}>{product.name}</h1>
-        <p className={styles.price}>Rs {product.price}</p>
+          <h1 className={styles.title}>{product.name}</h1>
+
+          <div className={styles.ratingRow}>
+            <FontAwesomeIcon icon={faStarSolid} className={styles.starIcon} />
+            <span className={styles.ratingValue}>
+              {product.rating.toFixed(1)}
+            </span>
+            <span className={styles.reviewsCount}>
+              ({product.reviewsCount} reviews)
+            </span>
+          </div>
+
+          <div className={styles.priceRow}>
+            <span className={styles.currentPrice}>₹{product.price}</span>
+            <span className={styles.originalPrice}>₹{product.mrp}</span>
+            <span className={styles.discountText}>
+              Save {product.savePct}%
+            </span>
+          </div>
+
           <p className={styles.desc}>{product.desc}</p>
 
-          {/* only render if colors array actually exists and has items */}
-          {product.colors && product.colors.length > 0 && (
-            <div className={styles.colorRow}>
-              {product.colors.map((c) => (
-                <span
-                  key={c}
-                  className={styles.colorSwatch}
-                  style={{ background: c }}
-                />
-              ))}
+          {product.colors?.length > 0 && (
+            <div className={styles.optionGroup}>
+              <h3 className={styles.optionTitle}>Colors</h3>
+              <div className={styles.colorRow}>
+                {product.colors.map((c) => (
+                  <span
+                    key={c}
+                    className={styles.colorSwatch}
+                    style={{ background: c }}
+                    aria-label={c}
+                  />
+                ))}
+              </div>
             </div>
           )}
 
-          {/* only render if sizes array actually exists and has items */}
-          {product.sizes && product.sizes.length > 0 && (
-            <div className={styles.sizeRow}>
-              {product.sizes.map((s) => (
-                <span key={s} className={styles.sizeChip}>{s}</span>
-              ))}
+          {product.sizes?.length > 0 && (
+            <div className={styles.optionGroup}>
+              <h3 className={styles.optionTitle}>Sizes</h3>
+              <div className={styles.sizeRow}>
+                {product.sizes.map((s) => (
+                  <span key={s} className={styles.sizeChip}>
+                    {s}
+                  </span>
+                ))}
+              </div>
             </div>
           )}
+
+          <div className={styles.optionGroup}>
+            <label className={styles.giftWrapLabel}>
+              <input
+                type="checkbox"
+                checked={giftWrap}
+                onChange={() => setGiftWrap((p) => !p)}
+                className={styles.giftWrapCheckbox}
+              />
+              Gift wrap this product? ₹
+              {product.giftWrapFee.toLocaleString("en-IN")}
+            </label>
+          </div>
+
+          <div className={styles.skuRow}>SKU: {product.sku}</div>
 
           <div className={styles.actionBtns}>
             <button
@@ -167,20 +219,20 @@ export default function ProductClientView({ product, gallery }: Props) {
               disabled={busy}
               onClick={handleAddToCart}
             >
-              {busy
-                ? "Adding…"
-                : (
-                  <>
-                    <FontAwesomeIcon icon={faShoppingCart} />
-                    &nbsp;Add to Cart
-                  </>
-                )}
+              <FontAwesomeIcon icon={faShoppingCart} /> Add to Cart
             </button>
 
-            <button className={styles.secondaryBtn} onClick={handleWhatsApp}>
-              <FontAwesomeIcon icon={faWhatsapp} />
-              &nbsp;WhatsApp Enquiry
+            <button
+              className={styles.secondaryBtn}
+              onClick={handleWhatsApp}
+            >
+              <FontAwesomeIcon icon={faWhatsapp} /> WhatsApp Enquiry
             </button>
+          </div>
+
+          <div className={styles.infoRow}>
+            <span>🚚 Free delivery on all prepaid orders in India</span>
+            <span>🔄 Easy returns &amp; exchanges</span>
           </div>
         </section>
       </div>
