@@ -197,3 +197,24 @@
     margin-bottom: 0.75rem;
     color: var(--color-dark, #333);
   }
+
+
+  .ratingRow { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem; }
+.starIcon { color: #f5a623; }
+.ratingValue { font-weight: 600; }
+.reviewsCount { color: #666; font-size: 0.9rem; }
+
+.priceRow { display: flex; align-items: baseline; gap: 0.75rem; margin: 0.75rem 0; }
+.currentPrice { font-size: 2rem; font-weight: 700; }
+.originalPrice { text-decoration: line-through; color: #888; }
+.discountText { color: #e02020; font-weight: 500; }
+
+.optionGroup { margin: 1rem 0; }
+.optionTitle { font-weight: 600; margin-bottom: 0.5rem; }
+
+.giftWrapLabel { display: flex; align-items: center; gap: 0.5rem; font-size: 0.95rem; }
+.giftWrapCheckbox { accent-color: #3fa99f; }
+
+.skuRow { font-size: 0.85rem; color: #555; margin-bottom: 1rem; }
+
+.infoRow { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 1rem; font-size: 0.9rem; color: #555; }
