@@ -5,7 +5,7 @@ import SiteHeader         from "@/components/layout/SiteHeader";
 import SiteFooter         from "@/components/layout/SiteFooter";
 import styles             from "./page.module.css";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5005";
+const API_BASE ="https://rani-riwaaj-backend-ylbq.vercel.app";
 
 /* ------------ <head> metadata ------------ */
 export async function generateMetadata(
