@@ -138,8 +138,8 @@ export default function CategoriesClient({ initialCategories }: Props) {
         }
 
         const url = isEditing
-          ? `http://localhost:5005/api/categories/${curr._id}`
-          : "http://localhost:5005/api/categories"
+          ? `https://rani-riwaaj-backend-ylbq.vercel.app/api/categories/${curr._id}`
+          : "https://rani-riwaaj-backend-ylbq.vercel.app/api/categories"
         const method = isEditing ? "PATCH" : "POST"
 
         const res = await fetch(url, {
@@ -172,7 +172,7 @@ export default function CategoriesClient({ initialCategories }: Props) {
   const handleDelete = useCallback(async (id: string) => {
     if (!confirm("Delete this category?")) return
     try {
-      const res = await fetch(`http://localhost:5005/api/categories/${id}`, {
+      const res = await fetch(`https://rani-riwaaj-backend-ylbq.vercel.app/api/categories/${id}`, {
         method: "DELETE",
         headers: authHeaders(),
       })
