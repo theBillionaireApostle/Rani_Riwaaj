@@ -6,7 +6,7 @@ export const revalidate = 0;
 
 async function fetchProduct(id: string) {
   const res = await fetch(
-    `http://localhost:5005/api/products/${id}`,
+    `https://rani-riwaaj-backend-ylbq.vercel.app/api/products/${id}`,
     { cache: "no-store" }
   );
   if (!res.ok) throw new Error("not found");
