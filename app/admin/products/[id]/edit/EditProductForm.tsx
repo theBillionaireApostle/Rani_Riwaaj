@@ -59,7 +59,7 @@ export default function EditProductForm({ product }: Props) {
 
     try {
       const res = await fetch(
-        `http://localhost:5005/api/products/${product._id}`,
+        `https://rani-riwaaj-backend-ylbq.vercel.app/api/products/${product._id}`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
