@@ -133,7 +133,7 @@ export default function Home() {
   useEffect(() => {
     async function fetchProducts() {
       try {
-        const res = await fetch("https://rani-riwaaj-backend-ylbq.vercel.app/api/products");
+        const res = await fetch("https://rani-riwaaj-backend-ylbq.vercel.app/api/products/published");
         if (!res.ok) {
           throw new Error("Failed to fetch products");
         }
