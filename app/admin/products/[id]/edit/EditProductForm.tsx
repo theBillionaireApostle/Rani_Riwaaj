@@ -1,15 +1,50 @@
-// app/admin/products/[id]/EditProductForm.tsx
 "use client";
 
-import { useState, FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 import { Save, X, Loader2 } from "lucide-react";
+import { toast } from "react-toastify";
+import clsx from "clsx";
+
+/* -------------------------------------------------------------------------
+ ✨ Schema ------------------------------------------------------------------
+---------------------------------------------------------------------------*/
+const schema = z.object({
+  name: z.string().min(1, "Name is required"),
+  price: z
+    .string()
+    .regex(/^\d+(,?\d+)*$/, "Use only numbers & commas (e.g. 1,499)")
+    .transform((val) => val.replace(/,/g, "")),
+  desc: z.string().min(1, "Description is required"),
+  defaultImageUrl: z.string().url("Please enter a valid image URL"),
+  colorsText: z.string().optional(),
+  sizesText: z.string().optional(),
+  badge: z.string().optional(),
+  justIn: z.boolean().default(false),
+  published: z.boolean().default(false),
+});
+
+export type FormValues = z.infer<typeof schema>;
+
+/* -------------------------------------------------------------------------
+ 🔧 Utility -----------------------------------------------------------------
+---------------------------------------------------------------------------*/
+function splitCSV(value?: string) {
+  return value
+    ? value
+        .split(/,\s*/)
+        .map((s) => s.trim())
+        .filter(Boolean)
+    : [];
+}
 
 interface Props {
   product: {
     _id: string;
     name: string;
-    price: string;       // e.g. "1,499"
+    price: string;
     desc: string;
     defaultImage: { url: string };
     colors: string[];
@@ -22,221 +57,208 @@ interface Props {
   };
 }
 
+/* -------------------------------------------------------------------------
+ 🖌️ Field Component ---------------------------------------------------------
+---------------------------------------------------------------------------*/
+interface FieldProps {
+  label: string;
+  error?: string;
+  children: React.ReactNode;
+}
+const Field = ({ label, error, children }: FieldProps) => (
+  <div className="flex flex-col gap-1 w-full">
+    <label className="text-sm font-medium text-gray-700 dark:text-gray-200">
+      {label}
+    </label>
+    {children}
+    {error && <span className="text-xs text-red-600">{error}</span>}
+  </div>
+);
+
+/* -------------------------------------------------------------------------
+ 🏗️  Form Component ---------------------------------------------------------
+---------------------------------------------------------------------------*/
 export default function EditProductForm({ product }: Props) {
   const router = useRouter();
 
-  const initialPrice = product.price.replace(/,/g, "");
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+    watch,
+  } = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: {
+      name: product.name,
+      price: product.price,
+      desc: product.desc,
+      defaultImageUrl: product.defaultImage.url,
+      colorsText: product.colors.join(", "),
+      sizesText: product.sizes.join(", "),
+      badge: product.badge,
+      justIn: product.justIn,
+      published: product.published,
+    },
+  });
 
-  const [name, setName] = useState(product.name);
-  const [price, setPrice] = useState(initialPrice);
-  const [desc, setDesc] = useState(product.desc);
-  const [defaultImageUrl, setDefaultImageUrl] = useState(product.defaultImage.url);
-  const [colorsText, setColorsText] = useState(product.colors.join(", "));
-  const [sizesText, setSizesText] = useState(product.sizes.join(", "));
-  const [badge, setBadge] = useState(product.badge);
-  const [justIn, setJustIn] = useState(product.justIn);
-  const [published, setPublished] = useState(product.published);
+  const previewUrl = watch("defaultImageUrl");
 
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    setSaving(true);
-    setError(null);
-
+  async function onSubmit(data: FormValues) {
     const body = {
-      name,
-      price,
-      desc,
-      defaultImage: { url: defaultImageUrl },
-      colors: colorsText.split(",").map((s) => s.trim()).filter(Boolean),
-      sizes: sizesText.split(",").map((s) => s.trim()).filter(Boolean),
-      badge,
-      justIn,
-      published,
+      name: data.name.trim(),
+      price: data.price,
+      desc: data.desc.trim(),
+      defaultImage: { url: data.defaultImageUrl.trim() },
+      colors: splitCSV(data.colorsText),
+      sizes: splitCSV(data.sizesText),
+      badge: data.badge?.trim() ?? "",
+      justIn: data.justIn,
+      published: data.published,
     };
 
     try {
       const res = await fetch(
-        `https://rani-riwaaj-backend-ylbq.vercel.app/api/products/${product._id}`,
+        `${process.env.NEXT_PUBLIC_API_BASE}/products/${product._id}`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body),
         }
       );
+
       if (!res.ok) throw new Error(await res.text());
+
+      toast.success("Product updated successfully ✨");
       router.push("/admin/products");
     } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setSaving(false);
+      toast.error(err.message || "Something went wrong");
     }
   }
 
+  /* -----------------------------------------------------------------------
+   🔙-----------------------------------------------------------------------*/
+
   return (
-    <div className="w-full max-w-4xl mx-auto mt-12">
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
-       
-        <form onSubmit={handleSubmit} className="px-8 py-6 space-y-6">
-          {error && (
-            <div className="text-red-700 bg-red-100 p-3 rounded">{error}</div>
-          )}
-
-          {/* two-column grid on md+ */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium mb-1">Name</label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-                className="w-full border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-400"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-1">Price (₹)</label>
-              <input
-                type="text"
-                value={price}
-                onChange={(e) => setPrice(e.target.value)}
-                required
-                className="w-full border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-400"
-              />
-            </div>
-          </div>
-
-          {/* full-width description */}
-          <div>
-            <label className="block text-sm font-medium mb-1">Description</label>
-            <textarea
-              value={desc}
-              onChange={(e) => setDesc(e.target.value)}
-              rows={4}
-              className="w-full border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-400"
-            />
-          </div>
-
-          {/* two-column for image URL & preview */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                Default Image URL
-              </label>
-              <input
-                type="url"
-                value={defaultImageUrl}
-                onChange={(e) => setDefaultImageUrl(e.target.value)}
-                className="w-full border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-400"
-              />
-            </div>
-            <div className="flex justify-center md:justify-start">
-              <img
-                src={defaultImageUrl}
-                alt="Preview"
-                className="h-40 object-contain rounded border"
-              />
-            </div>
-          </div>
-
-          {/* two-column colors & sizes */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                Colors (comma separated)
-              </label>
-              <input
-                type="text"
-                value={colorsText}
-                onChange={(e) => setColorsText(e.target.value)}
-                className="w-full border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-400"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                Sizes (comma separated)
-              </label>
-              <input
-                type="text"
-                value={sizesText}
-                onChange={(e) => setSizesText(e.target.value)}
-                className="w-full border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-400"
-              />
-            </div>
-          </div>
-
-          {/* badge */}
-          <div>
-            <label className="block text-sm font-medium mb-1">Badge Label</label>
+    <section className="mx-auto mt-12 w-full max-w-4xl px-4 sm:px-8">
+      <form
+        onSubmit={handleSubmit(onSubmit)}
+        className="space-y-8 rounded-lg bg-white p-8 shadow-md dark:bg-richblack"
+      >
+        {/* Grid */}
+        <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
+          <Field label="Name" error={errors.name?.message}>
             <input
               type="text"
-              value={badge}
-              onChange={(e) => setBadge(e.target.value)}
-              className="w-full border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-400"
+              {...register("name")}
+              className="input"
+            />
+          </Field>
+
+          <Field label="Price (₹)" error={errors.price?.message}>
+            <input
+              type="text"
+              inputMode="numeric"
+              {...register("price")}
+              className="input"
+            />
+          </Field>
+
+          <Field label="Colors (comma separated)">
+            <input type="text" {...register("colorsText")} className="input" />
+          </Field>
+
+          <Field label="Sizes (comma separated)">
+            <input type="text" {...register("sizesText")} className="input" />
+          </Field>
+        </div>
+
+        {/* Description */}
+        <Field label="Description" error={errors.desc?.message}>
+          <textarea rows={4} {...register("desc")} className="input" />
+        </Field>
+
+        {/* Image + Preview */}
+        <div className="grid grid-cols-1 items-start gap-8 md:grid-cols-2">
+          <Field
+            label="Default Image URL"
+            error={errors.defaultImageUrl?.message}
+          >
+            <input type="url" {...register("defaultImageUrl")} className="input" />
+          </Field>
+
+          <div className="flex justify-center md:justify-start">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={previewUrl}
+              alt="Preview"
+              className="h-40 w-auto rounded border object-contain"
             />
           </div>
+        </div>
 
-          {/* toggles */}
-          <div className="flex flex-wrap gap-6">
-            <label className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                checked={justIn}
-                onChange={(e) => setJustIn(e.target.checked)}
-                className="h-4 w-4 text-blue-600"
-              />
-              <span className="text-sm">Just In</span>
+        {/* Badge & Toggles */}
+        <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
+          <Field label="Badge Label">
+            <input type="text" {...register("badge")} className="input" />
+          </Field>
+
+          <div className="flex items-center gap-6 pt-2">
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" {...register("justIn")}/> Just In
             </label>
-            <label className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                checked={published}
-                onChange={(e) => setPublished(e.target.checked)}
-                className="h-4 w-4 text-blue-600"
-              />
-              <span className="text-sm">Published</span>
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" {...register("published")}/> Published
             </label>
           </div>
+        </div>
 
-          {/* timestamps */}
-          <div className="text-xs text-gray-500">
-            <div>Created: {new Date(product.createdAt).toLocaleString()}</div>
-            <div>Updated: {new Date(product.updatedAt).toLocaleString()}</div>
-          </div>
+        {/* Timestamps */}
+        <div className="text-xs text-gray-500 dark:text-gray-400">
+          <span>Created: {new Date(product.createdAt).toLocaleString()}</span>
+          {" • "}
+          <span>Updated: {new Date(product.updatedAt).toLocaleString()}</span>
+        </div>
 
-          {/* actions */}
-          <div className="flex flex-col sm:flex-row gap-4">
-            <button
-              type="submit"
-              disabled={saving}
-              className={`flex-1 inline-flex items-center justify-center py-2 rounded text-white ${
-                saving
-                  ? "bg-gray-400 cursor-not-allowed"
-                  : "bg-blue-600 hover:bg-blue-700"
-              }`}
-            >
-              {saving ? (
-                <Loader2 className="animate-spin h-5 w-5 mr-2" />
-              ) : (
-                <Save className="h-5 w-5 mr-2" />
-              )}
-              {saving ? "Saving…" : "Save Changes"}
-            </button>
+        {/* Actions */}
+        <div className="flex flex-col gap-4 sm:flex-row">
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className={clsx(
+              "btn-primary flex-1",
+              isSubmitting && "cursor-not-allowed opacity-60"
+            )}
+          >
+            {isSubmitting ? (
+              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+            ) : (
+              <Save className="mr-2 h-5 w-5" />
+            )}
+            {isSubmitting ? "Saving…" : "Save Changes"}
+          </button>
 
-            <button
-              type="button"
-              onClick={() => router.push("/admin/products")}
-              className="flex-1 inline-flex items-center justify-center py-2 rounded border border-gray-300 hover:bg-gray-100"
-            >
-              <X className="h-5 w-5 mr-2" />
-              Cancel
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+          <button
+            type="button"
+            onClick={() => router.push("/admin/products")}
+            className="btn-secondary flex-1"
+          >
+            <X className="mr-2 h-5 w-5" /> Cancel
+          </button>
+        </div>
+      </form>
+
+      {/* Tailwind component utilities --------------------------------------*/}
+      <style jsx global>{`
+        .input {
+          @apply w-full rounded border border-gray-300 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-cerulean dark:bg-gray-800 dark:border-gray-700;
+        }
+        .btn-primary {
+          @apply inline-flex items-center justify-center rounded bg-cerulean px-4 py-2 font-medium text-white hover:bg-cerulean/90;
+        }
+        .btn-secondary {
+          @apply inline-flex items-center justify-center rounded border border-gray-300 bg-white px-4 py-2 font-medium hover:bg-gray-100 dark:bg-gray-800 dark:border-gray-700;
+        }
+      `}</style>
+    </section>
   );
 }
