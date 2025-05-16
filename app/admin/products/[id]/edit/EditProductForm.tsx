@@ -118,7 +118,7 @@ export default function EditProductForm({ product }: Props) {
 
     try {
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_BASE}/products/${product._id}`,
+        `https://rani-riwaaj-backend-ylbq.vercel.app/products/${product._id}`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
