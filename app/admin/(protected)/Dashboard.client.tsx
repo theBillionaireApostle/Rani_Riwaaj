@@ -338,7 +338,7 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
   const handleToggle = useCallback(async (product: Product) => {
     try {
       const updatedProduct = { ...product, published: !product.published };
-      const res = await fetch(`https://rani-riwaaj-backend-ylbq.vercel.app/api/products/${product._id}/toggle`, {
+      const res = await fetch(`https://rani-riwaaj-backend-ylbq.vercel.app/api/products/${product._id}/published`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ published: updatedProduct.published }),
