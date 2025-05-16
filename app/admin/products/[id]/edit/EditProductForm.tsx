@@ -78,9 +78,7 @@ export default function EditProductForm({ product }: Props) {
   return (
     <div className="w-full max-w-4xl mx-auto mt-12">
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
-        <div className="px-8 py-6 border-b">
-          <h1 className="text-2xl font-semibold">Edit “{product.name}”</h1>
-        </div>
+       
         <form onSubmit={handleSubmit} className="px-8 py-6 space-y-6">
           {error && (
             <div className="text-red-700 bg-red-100 p-3 rounded">{error}</div>
