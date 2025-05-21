@@ -112,7 +112,7 @@
        try {
          abortRef.current?.abort();
          abortRef.current = new AbortController();
-         const res = await fetch(`/api/products/${product._id}`, {
+         const res = await fetch(`https://rani-riwaaj-backend-ylbq.vercel.app/api/products/${product._id}`, {
            method: "PUT",
            headers: { "Content-Type": "application/json" },
            body: JSON.stringify(body),
