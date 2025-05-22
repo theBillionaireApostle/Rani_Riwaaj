@@ -186,13 +186,36 @@
    
            {/* Action Buttons */}
            <div className="flex flex-col gap-4 sm:flex-row">
-             <button type="submit" disabled={isSubmitting || !isDirty} className={clsx("btn-primary flex-1", (isSubmitting || !isDirty) && "cursor-not-allowed opacity-60")}> 
-               {isSubmitting ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}<span>Save Changes</span>
-             </button>
-             <button type="button" onClick={() => router.push("/admin/products")} className="btn-danger flex-1">
-               <X className="h-5 w-5" /> <span>Cancel</span>
-             </button>
-           </div>
+  {/* ── Save ── */}
+  <button
+    type="submit"
+    disabled={isSubmitting || !isDirty}
+    className={clsx(
+      "flex flex-1 items-center justify-center gap-2 rounded px-4 py-2 font-medium text-white transition",
+      // enabled
+      !(isSubmitting || !isDirty) && "bg-blue-600 hover:bg-blue-700",
+      // disabled
+      (isSubmitting || !isDirty) && "bg-blue-400 cursor-not-allowed"
+    )}
+  >
+    {isSubmitting ? (
+      <Loader2 className="h-5 w-5 animate-spin" />
+    ) : (
+      <Save className="h-5 w-5" />
+    )}
+    <span>Save&nbsp;Changes</span>
+  </button>
+
+  {/* ── Cancel (back) ── */}
+  <button
+    type="button"
+    onClick={() => router.back()}
+    className="flex flex-1 items-center justify-center gap-2 rounded border border-blue-600 px-4 py-2 font-medium text-blue-600 transition hover:bg-blue-50"
+  >
+    <X className="h-5 w-5" />
+    <span>Cancel</span>
+  </button>
+</div>
          </form>
    
          {/* Tailwind util overrides */}
