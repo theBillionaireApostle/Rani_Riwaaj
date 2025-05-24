@@ -39,16 +39,16 @@
 
 
 /* ==========================================================================
-   📊  Rani Riwaj – Analytics Dashboard Styles (Hash‑coded)
-   File: app/admin/(protected)/analytics/analytics.module.css
+   📊  Rani Riwaj – Analytics Dashboard CSS (hash‑coded)
+   Supports large charts + KPI donuts/lines + numeric tiles
    ==========================================================================*/
 
-/* ---------- Page layout -------------------------------------------------- */
+/* ---------- Layout ------------------------------------------------------ */
 .wrapper {
   display: flex;
   flex-direction: column;
   gap: 2rem;
-  padding: min(6vw, 3rem) 1rem 4rem;
+  padding: clamp(2rem, 6vw, 3rem) 1rem 4rem;
   animation: fadeIn 0.6s ease-out both;
 }
 
@@ -60,7 +60,7 @@
 .pageTitle {
   font-size: clamp(1.75rem, 4vw + 0.5rem, 2.25rem);
   font-weight: 700;
-  color: #003459; /* prussian */
+  color: #003459;
   text-align: center;
   letter-spacing: -0.02em;
 }
@@ -69,48 +69,10 @@
   text-align: center;
   padding: 4rem 0;
   font-weight: 500;
-  color: #007EA7; /* cerulean */
+  color: #007EA7;
 }
 
-/* ---------- High‑level stat cards --------------------------------------- */
-.statsGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 1rem;
-}
-
-.statCard {
-  background: #ffffff;            /* surface */
-  border-radius: 1rem;
-  padding: 1.5rem;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.06);
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  transition: transform 0.25s ease, box-shadow 0.25s ease;
-}
-
-.statCard:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
-}
-
-.statCard h3 {
-  font-size: 0.825rem;
-  font-weight: 600;
-  color: #4b5563;
-  letter-spacing: 0.02em;
-}
-
-.statCard p {
-  font-size: 1.65rem;
-  font-weight: 700;
-  color: #00171F; /* rich black */
-  line-height: 1.1;
-}
-
-/* ---------- Charts grid -------------------------------------------------- */
+/* ---------- Chart / tile grid ------------------------------------------ */
 .chartsGrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
@@ -119,10 +81,10 @@
   grid-auto-flow: dense;
 }
 
-/* ---------- Card wrappers ------------------------------------------------ */
+/* ---------- Card wrappers ---------------------------------------------- */
 .card,
 .cardSpan {
-  background: #ffffff;            /* surface */
+  background: #ffffff;
   border-radius: 1rem;
   padding: 1.25rem 1rem 0.5rem;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
@@ -138,31 +100,28 @@
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
 }
 
-.cardSpan {
-  grid-column: span 2;
-}
+.cardSpan { grid-column: span 2; }
 
 .cardTitle {
   font-weight: 600;
   margin-bottom: 0.75rem;
-  color: #007EA7; /* cerulean */
+  color: #007EA7;
   text-align: center;
   font-size: 0.95rem;
   letter-spacing: 0.02em;
 }
 
-/* Ensure Recharts fills card */
 .card :global(svg),
 .cardSpan :global(svg) {
   width: 100% !important;
   height: 100% !important;
 }
 
-/* ---------- Mini KPI cards ---------------------------------------------- */
+/* ---------- Stats / KPI tiles ------------------------------------------ */
 .miniStat {
-  background: #E5E5E5;            /* platinum */
+  background: #E5E5E5;
   border-radius: 0.875rem;
-  padding: 1rem;
+  padding: 0.75rem;
   text-align: center;
   display: flex;
   flex-direction: column;
@@ -181,41 +140,38 @@
 .miniLabel {
   font-size: 0.75rem;
   color: #4b5563;
-  letter-spacing: 0.03em;
 }
 
 .miniValue {
-  font-size: 1.25rem;
+  font-size: 1.35rem;
   font-weight: 700;
   color: #00171F;
   letter-spacing: -0.01em;
 }
 
-/* ---------- Dark‑mode tweaks -------------------------------------------- */
+/* Explicit value text under mini area chart */
+.kpiValue {
+  margin-top: 0.5rem;
+  font-size: 1.35rem;
+  font-weight: 700;
+  text-align: center;
+  color: #00171F;
+}
+
+/* ---------- Dark mode tweaks ------------------------------------------- */
 @media (prefers-color-scheme: dark) {
   .pageTitle { color: #E5E5E5; }
-  .statCard, .card, .cardSpan { background: #0b1c24; }
-  .miniStat { background: #051018; }
+  .card, .cardSpan, .miniStat { background: #0b1c24; }
 
-  .statCard p,
-  .miniValue { color: #E5E5E5; }
-  .statCard h3,
+  .miniValue, .kpiValue { color: #E5E5E5; }
   .miniLabel { color: #9ca3af; }
 
-  /* stronger shadow for dark */
-  .statCard, .card, .cardSpan, .miniStat {
+  .card, .cardSpan, .miniStat {
     box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
   }
 }
 
-/* ---------- Scroll reveal utility (optional) ---------------------------- */
-.reveal {
-  opacity: 0;
-  transform: translateY(14px);
-  transition: opacity 0.6s ease, transform 0.6s ease;
-}
-
-.reveal.is-visible {
-  opacity: 1;
-  transform: none;
+/* ---------- Utility: hide scrollbar inside Treemap --------------------- */
+.card :global(.recharts-treemap-rect:hover) {
+  opacity: 0.85;
 }
