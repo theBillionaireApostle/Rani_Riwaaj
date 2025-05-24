@@ -1,5 +1,5 @@
 // app/admin/(protected)/analytics/ClientAnalytics.tsx
-// Client component – all Recharts logic & dummy data lives here
+// Client component – dummy visualisations (only product/category totals are live)
 
 "use client";
 
@@ -26,7 +26,7 @@ import {
 import styles from "./analytics.module.css";
 
 interface Props {
-  baseStats: { productCount: number; categoryCount: number };
+  baseStats?: { productCount: number; categoryCount: number }; // optional for safety
 }
 
 export default function ClientAnalytics({ baseStats }: Props) {
@@ -72,11 +72,15 @@ export default function ClientAnalytics({ baseStats }: Props) {
     returningCustomerRate: 27.9,
     cartAbandonmentRate: 67.2,
     lowStockItems: 14,
-    revenueGrowth: 5.8, // vs previous period
+    revenueGrowth: 5.8,
     dailyActiveUsers: 840,
   };
 
   const COLORS = ["#007EA7", "#003459", "#FCA311", "#E5E5E5", "#00171F"];
+
+  // Safe fallback values
+  const totalProducts   = baseStats?.productCount   ?? 0;
+  const totalCategories = baseStats?.categoryCount ?? 0;
 
   // ── Render ───────────────────────────────────────────────────────────────
   return (
@@ -84,10 +88,7 @@ export default function ClientAnalytics({ baseStats }: Props) {
       {/* 1️⃣/2️⃣  Sales vs Orders (combo line chart) */}
       <Card title="7-Day Sales vs Orders" span>
         <ResponsiveContainer width="100%" height={260}>
-          <LineChart
-            data={dailySales}
-            margin={{ top: 10, right: 20, left: 0, bottom: 0 }}
-          >
+          <LineChart data={dailySales} margin={{ top: 10, right: 20 }}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey="date" />
             <YAxis />
@@ -96,16 +97,16 @@ export default function ClientAnalytics({ baseStats }: Props) {
             <Line
               type="monotone"
               dataKey="sales"
-              name="Sales (₹)"
               stroke="#007EA7"
               strokeWidth={2}
+              name="Sales (₹)"
             />
             <Line
               type="monotone"
               dataKey="orders"
-              name="Orders"
               stroke="#FCA311"
               strokeWidth={2}
+              name="Orders"
             />
           </LineChart>
         </ResponsiveContainer>
@@ -124,10 +125,7 @@ export default function ClientAnalytics({ baseStats }: Props) {
               label={({ name }) => name}
             >
               {revenueByCategory.map((_, idx) => (
-                <Cell
-                  key={`cell-${idx}`}
-                  fill={COLORS[idx % COLORS.length]}
-                />
+                <Cell key={`cell-${idx}`} fill={COLORS[idx % COLORS.length]} />
               ))}
             </Pie>
             <Tooltip formatter={(v: number) => `₹${v.toLocaleString()}`} />
@@ -151,26 +149,11 @@ export default function ClientAnalytics({ baseStats }: Props) {
       {/* 5️⃣  Revenue growth (radar) */}
       <Card title="Monthly Revenue Growth (Goal vs Actual)">
         <ResponsiveContainer width="100%" height={260}>
-          <RadarChart
-            outerRadius={90}
-            data={[{ month: "May", growth: kpi.revenueGrowth, goal: 8 }]}
-          >
+          <RadarChart outerRadius={90} data={[{ month: "May", growth: kpi.revenueGrowth, goal: 8 }]}> 
             <PolarGrid />
             <PolarAngleAxis dataKey="month" />
-            <Radar
-              name="Actual"
-              dataKey="growth"
-              stroke="#007EA7"
-              fill="#007EA7"
-              fillOpacity={0.6}
-            />
-            <Radar
-              name="Goal"
-              dataKey="goal"
-              stroke="#FCA311"
-              fill="#FCA311"
-              fillOpacity={0.3}
-            />
+            <Radar name="Actual" dataKey="growth" stroke="#007EA7" fill="#007EA7" fillOpacity={0.6} />
+            <Radar name="Goal"  dataKey="goal"   stroke="#FCA311" fill="#FCA311" fillOpacity={0.3} />
             <Legend />
             <Tooltip formatter={(v: number) => `${v}%`} />
           </RadarChart>
@@ -191,38 +174,24 @@ export default function ClientAnalytics({ baseStats }: Props) {
         </ResponsiveContainer>
       </Card>
 
-      {/* 7️⃣-1️⃣5️⃣  KPI mini-cards */}
-      <MiniStat
-        label="Avg Order Value"
-        value={`₹${kpi.avgOrderValue.toLocaleString()}`}
-      />
-      <MiniStat label="Conversion Rate" value={`${kpi.conversionRate}%`} />
-      <MiniStat label="Refund Rate" value={`${kpi.refundRate}%`} />
-      <MiniStat
-        label="Returning Customers"
-        value={`${kpi.returningCustomerRate}%`}
-      />
-      <MiniStat
-        label="Cart Abandonment"
-        value={`${kpi.cartAbandonmentRate}%`}
-      />
-      <MiniStat label="Low Stock Items" value={kpi.lowStockItems} />
-      <MiniStat label="Daily Active Users" value={kpi.dailyActiveUsers} />
-      <MiniStat label="Products (live)" value={baseStats.productCount} />
+      {/* 7️⃣-1️⃣6️⃣  KPI & live counts */}
+      <MiniStat label="Avg Order Value"       value={`₹${kpi.avgOrderValue.toLocaleString()}`} />
+      <MiniStat label="Conversion Rate"       value={`${kpi.conversionRate}%`} />
+      <MiniStat label="Refund Rate"           value={`${kpi.refundRate}%`} />
+      <MiniStat label="Returning Customers"   value={`${kpi.returningCustomerRate}%`} />
+      <MiniStat label="Cart Abandonment"      value={`${kpi.cartAbandonmentRate}%`} />
+      <MiniStat label="Low Stock Items"       value={kpi.lowStockItems} />
+      <MiniStat label="Daily Active Users"    value={kpi.dailyActiveUsers} />
+
+      {/* Live numbers straight from backend */}
+      <MiniStat label="Products (live)"       value={totalProducts} />
+      <MiniStat label="Categories (live)"     value={totalCategories} />
     </div>
   );
 }
 
-// ── Helpers ─────────────────────────────────────────────────────────────────
-function Card({
-  title,
-  children,
-  span,
-}: {
-  title: string;
-  children: React.ReactNode;
-  span?: boolean;
-}) {
+/* Helpers */
+function Card({ title, children, span }: { title: string; children: React.ReactNode; span?: boolean }) {
   return (
     <div className={span ? styles.cardSpan : styles.card}>
       <h4 className={styles.cardTitle}>{title}</h4>
@@ -231,13 +200,7 @@ function Card({
   );
 }
 
-function MiniStat({
-  label,
-  value,
-}: {
-  label: string;
-  value: string | number;
-}) {
+function MiniStat({ label, value }: { label: string; value: string | number }) {
   return (
     <div className={styles.miniStat}>
       <span className={styles.miniLabel}>{label}</span>
