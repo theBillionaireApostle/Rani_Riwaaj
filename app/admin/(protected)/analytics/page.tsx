@@ -44,8 +44,10 @@ export default function ClientAnalytics({ baseStats }: Props) {
   });
 
   useEffect(() => {
+    const token = localStorage.getItem("token") || "";
     fetch("https://rani-riwaaj-backend-ylbq.vercel.app/api/analytics", {
       cache: "no-store",
+      headers: { Authorization: `Bearer ${token}` },
     })
       .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
       .then((json: AnalyticsCounts) => {
@@ -114,19 +116,23 @@ export default function ClientAnalytics({ baseStats }: Props) {
     <>
       {/* ===== Summary cards on top ==================================== */}
       <div className={styles.statsGrid}>
-        <SummaryCard label="7‑Day Revenue" value={`₹${totalRevenue.toLocaleString()}`} />
-        <SummaryCard label="7‑Day Orders" value={totalOrders} />
-        <SummaryCard label="Avg Order Value" value={`₹${kpi.avgOrderValue.toLocaleString()}`} />
+        <SummaryCard
+          label="7-Day Revenue"
+          value={`₹${totalRevenue.toLocaleString()}`}
+        />
+        <SummaryCard label="7-Day Orders" value={totalOrders} />
+        <SummaryCard
+          label="Avg Order Value"
+          value={`₹${kpi.avgOrderValue.toLocaleString()}`}
+        />
         <SummaryCard label="Products (live)" value={counts.productCount} />
         <SummaryCard label="Categories (live)" value={counts.categoryCount} />
       </div>
 
       {/* ===== Charts grid ============================================ */}
       <div className={styles.chartsGrid}>
-        {/* ... (existing chart + KPI tiles – unchanged) ... */}
-
         {/* 1️⃣ Sales vs Orders */}
-        <Card title="7‑Day Sales vs Orders" span>
+        <Card title="7-Day Sales vs Orders" span>
           <ResponsiveContainer width="100%" height={260}>
             <LineChart data={dailySales} margin={{ top: 10, right: 20 }}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -134,17 +140,34 @@ export default function ClientAnalytics({ baseStats }: Props) {
               <YAxis />
               <Tooltip formatter={(v: number) => `₹${v.toLocaleString()}`} />
               <Legend />
-              <Line dataKey="sales" name="Sales (₹)" stroke="#007EA7" strokeWidth={2} />
-              <Line dataKey="orders" name="Orders" stroke="#FCA311" strokeWidth={2} />
+              <Line
+                dataKey="sales"
+                name="Sales (₹)"
+                stroke="#007EA7"
+                strokeWidth={2}
+              />
+              <Line
+                dataKey="orders"
+                name="Orders"
+                stroke="#FCA311"
+                strokeWidth={2}
+              />
             </LineChart>
           </ResponsiveContainer>
         </Card>
 
-        {/* 2️⃣ Revenue by Category */}
+        {/* 2️⃣ Revenue by Category (pie) */}
         <Card title="Revenue by Category">
           <ResponsiveContainer width="100%" height={260}>
             <PieChart>
-              <Pie dataKey="value" data={revenueByCategory} cx="50%" cy="50%" outerRadius={90} label={(d) => d.name}>
+              <Pie
+                dataKey="value"
+                data={revenueByCategory}
+                cx="50%"
+                cy="50%"
+                outerRadius={90}
+                label={(d) => d.name}
+              >
                 {revenueByCategory.map((_, i) => (
                   <Cell key={i} fill={COLORS[i % COLORS.length]} />
                 ))}
@@ -154,7 +177,7 @@ export default function ClientAnalytics({ baseStats }: Props) {
           </ResponsiveContainer>
         </Card>
 
-        {/* 3️⃣ Top Products */}
+        {/* 3️⃣ Top Products (horizontal bar) */}
         <Card title="Top 5 Products by Sales">
           <ResponsiveContainer width="100%" height={260}>
             <BarChart data={topProducts} layout="vertical" margin={{ left: 50 }}>
@@ -167,14 +190,29 @@ export default function ClientAnalytics({ baseStats }: Props) {
           </ResponsiveContainer>
         </Card>
 
-        {/* 4️⃣ Revenue Growth */}
+        {/* 4️⃣ Revenue Growth (radar) */}
         <Card title="Monthly Revenue Growth vs Goal">
           <ResponsiveContainer width="100%" height={260}>
-            <RadarChart outerRadius={90} data={[{ m: "May", g: kpi.revenueGrowth, goal: 8 }]}> 
+            <RadarChart
+              outerRadius={90}
+              data={[{ m: "May", g: kpi.revenueGrowth, goal: 8 }]}
+            >
               <PolarGrid />
               <PolarAngleAxis dataKey="m" />
-              <Radar dataKey="g" name="Actual" stroke="#007EA7" fill="#007EA7" fillOpacity={0.6} />
-              <Radar dataKey="goal" name="Goal" stroke="#FCA311" fill="#FCA311" fillOpacity={0.3} />
+              <Radar
+                dataKey="g"
+                name="Actual"
+                stroke="#007EA7"
+                fill="#007EA7"
+                fillOpacity={0.6}
+              />
+              <Radar
+                dataKey="goal"
+                name="Goal"
+                stroke="#FCA311"
+                fill="#FCA311"
+                fillOpacity={0.3}
+              />
               <Legend />
               <Tooltip formatter={(v: number) => `${v}%`} />
             </RadarChart>
@@ -184,23 +222,50 @@ export default function ClientAnalytics({ baseStats }: Props) {
         {/* 5️⃣ Geo Treemap */}
         <Card title="Sales by Metro City">
           <ResponsiveContainer width="100%" height={260}>
-            <Treemap data={geoSales} dataKey="size" nameKey="name" stroke="#fff" fill="#003459" ratio={4/3} />
+            <Treemap
+              data={geoSales}
+              dataKey="size"
+              nameKey="name"
+              stroke="#fff"
+              fill="#003459"
+              ratio={4 / 3}
+            />
           </ResponsiveContainer>
         </Card>
 
-        {/* 6️⃣‑10️⃣ KPI tiles */}
-        <MiniStat label="Conversion Rate"       value={`${kpi.conversionRate}%`} />
-        <MiniStat label="Refund Rate"           value={`${kpi.refundRate}%`} />
-        <MiniStat label="Cart Abandonment"      value={`${kpi.cartAbandonmentRate}%`} />
-        <MiniStat label="Returning Customers"   value={`${kpi.returningCustomerRate}%`} />
-        <MiniStat label="Daily Active Users"    value={kpi.dailyActiveUsers} />
+        {/* 6️⃣-10️⃣ KPI tiles */}
+        <MiniStat
+          label="Conversion Rate"
+          value={`${kpi.conversionRate}%`}
+        />
+        <MiniStat label="Refund Rate" value={`${kpi.refundRate}%`} />
+        <MiniStat
+          label="Cart Abandonment"
+          value={`${kpi.cartAbandonmentRate}%`}
+        />
+        <MiniStat
+          label="Returning Customers"
+          value={`${kpi.returningCustomerRate}%`}
+        />
+        <MiniStat
+          label="Daily Active Users"
+          value={kpi.dailyActiveUsers}
+        />
       </div>
     </>
   );
 }
 
 /* ───────────────────────── Reusable components ────────────────────────── */
-function Card({ title, children, span }: { title: string; children: React.ReactNode; span?: boolean }) {
+function Card({
+  title,
+  children,
+  span,
+}: {
+  title: string;
+  children: React.ReactNode;
+  span?: boolean;
+}) {
   return (
     <div className={span ? styles.cardSpan : styles.card}>
       <h4 className={styles.cardTitle}>{title}</h4>
@@ -209,7 +274,13 @@ function Card({ title, children, span }: { title: string; children: React.ReactN
   );
 }
 
-function SummaryCard({ label, value }: { label: string; value: string | number }) {
+function SummaryCard({
+  label,
+  value,
+}: {
+  label: string;
+  value: string | number;
+}) {
   return (
     <div className={styles.statCard}>
       <h3>{label}</h3>
@@ -218,7 +289,13 @@ function SummaryCard({ label, value }: { label: string; value: string | number }
   );
 }
 
-function MiniStat({ label, value }: { label: string; value: string | number }) {
+function MiniStat({
+  label,
+  value,
+}: {
+  label: string;
+  value: string | number;
+}) {
   return (
     <div className={styles.miniStat}>
       <span className={styles.miniLabel}>{label}</span>
