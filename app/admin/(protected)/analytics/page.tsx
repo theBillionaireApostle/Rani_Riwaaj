@@ -1,6 +1,4 @@
 // app/admin/(protected)/analytics/ClientAnalytics.tsx
-// Client component – summary + visual charts – now fetches live counts
-
 "use client";
 
 import {
@@ -12,16 +10,11 @@ import {
   PieChart,
   Pie,
   Cell,
-  RadarChart,
-  Radar,
-  PolarGrid,
-  PolarAngleAxis,
   Tooltip,
   Legend,
   CartesianGrid,
   XAxis,
   YAxis,
-  Treemap,
 } from "recharts";
 import { useEffect, useState } from "react";
 import styles from "./analytics.module.css";
@@ -32,34 +25,39 @@ interface AnalyticsCounts {
 }
 
 interface Props {
-  /** fallback values from the server; will be updated on the client */
+  /** server‐rendered fallback counts */
   baseStats?: AnalyticsCounts;
 }
 
 export default function ClientAnalytics({ baseStats }: Props) {
-  /* ─────────── 1. Live counts (fetch from /api/analytics) ─────────────── */
+  //───────────────────────────────────────────
+  // 1️⃣ Live product & category counts
+  //───────────────────────────────────────────
   const [counts, setCounts] = useState<AnalyticsCounts>({
     productCount: baseStats?.productCount ?? 0,
     categoryCount: baseStats?.categoryCount ?? 0,
   });
 
   useEffect(() => {
-    const token = localStorage.getItem("token") || "";
-    fetch("https://rani-riwaaj-backend-ylbq.vercel.app/api/analytics", {
-      cache: "no-store",
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
-      .then((json: AnalyticsCounts) => {
+    const base = "https://rani-riwaaj-backend-ylbq.vercel.app";
+    Promise.all([
+      fetch(`${base}/api/products`,   { cache: "no-store" }),
+      fetch(`${base}/api/categories`, { cache: "no-store" }),
+    ])
+      .then(async ([prodRes, catRes]) => {
+        if (!prodRes.ok || !catRes.ok) throw new Error("Failed to fetch analytics");
+        const [products, categories] = await Promise.all([prodRes.json(), catRes.json()]);
         setCounts({
-          productCount: json.productCount ?? 0,
-          categoryCount: json.categoryCount ?? 0,
+          productCount: Array.isArray(products)   ? products.length   : 0,
+          categoryCount: Array.isArray(categories) ? categories.length : 0,
         });
       })
-      .catch((err) => console.error("analytics fetch failed", err));
+      .catch((err) => console.error("Analytics fetch failed:", err));
   }, []);
 
-  /* ─────────── 2. Dummy datasets for charts ───────────────────────────── */
+  //───────────────────────────────────────────
+  // 2️⃣ Dummy chart data
+  //───────────────────────────────────────────
   const dailySales = [
     { date: "18 May", sales: 12000, orders: 80 },
     { date: "19 May", sales: 13400, orders: 91 },
@@ -69,7 +67,6 @@ export default function ClientAnalytics({ baseStats }: Props) {
     { date: "23 May", sales: 15840, orders: 106 },
     { date: "24 May", sales: 16600, orders: 111 },
   ];
-
   const revenueByCategory = [
     { name: "Sarees", value: 78000 },
     { name: "Lehengas", value: 42000 },
@@ -77,7 +74,6 @@ export default function ClientAnalytics({ baseStats }: Props) {
     { name: "Dupattas", value: 15000 },
     { name: "Accessories", value: 11000 },
   ];
-
   const topProducts = [
     { name: "Red Banarasi", sales: 8500 },
     { name: "Pink Patola", sales: 7300 },
@@ -86,53 +82,29 @@ export default function ClientAnalytics({ baseStats }: Props) {
     { name: "Blue Bandhani", sales: 6100 },
   ];
 
-  const geoSales = [
-    { name: "Delhi", size: 27000 },
-    { name: "Mumbai", size: 23000 },
-    { name: "Bengaluru", size: 18000 },
-    { name: "Kolkata", size: 15000 },
-    { name: "Hyderabad", size: 12000 },
-  ];
+  //───────────────────────────────────────────
+  // 3️⃣ Derived summary values
+  //───────────────────────────────────────────
+  const totalRevenue = dailySales.reduce((sum, d) => sum + d.sales, 0);
+  const totalOrders  = dailySales.reduce((sum, d) => sum + d.orders, 0);
 
-  const kpi = {
-    avgOrderValue: 1475,
-    conversionRate: 3.4,
-    refundRate: 0.6,
-    returningCustomerRate: 27.9,
-    cartAbandonmentRate: 67.2,
-    lowStockItems: 14,
-    revenueGrowth: 5.8,
-    dailyActiveUsers: 840,
-  };
-
-  const COLORS = ["#007EA7", "#003459", "#FCA311", "#E5E5E5", "#00171F"];
-
-  /* ─────────── 3. Derived summary numbers ─────────────────────────────── */
-  const totalRevenue = dailySales.reduce((acc, d) => acc + d.sales, 0);
-  const totalOrders = dailySales.reduce((acc, d) => acc + d.orders, 0);
-
-  /* ─────────── 4. Render ──────────────────────────────────────────────── */
+  //───────────────────────────────────────────
+  // 4️⃣ Render
+  //───────────────────────────────────────────
   return (
     <>
-      {/* ===== Summary cards on top ==================================== */}
+      {/* Summary tiles */}
       <div className={styles.statsGrid}>
-        <SummaryCard
-          label="7-Day Revenue"
-          value={`₹${totalRevenue.toLocaleString()}`}
-        />
-        <SummaryCard label="7-Day Orders" value={totalOrders} />
-        <SummaryCard
-          label="Avg Order Value"
-          value={`₹${kpi.avgOrderValue.toLocaleString()}`}
-        />
-        <SummaryCard label="Products (live)" value={counts.productCount} />
-        <SummaryCard label="Categories (live)" value={counts.categoryCount} />
+        <SummaryCard label="7-Day Revenue"    value={`₹${totalRevenue.toLocaleString()}`} />
+        <SummaryCard label="7-Day Orders"     value={totalOrders} />
+        <SummaryCard label="Products (live)"  value={counts.productCount} />
+        <SummaryCard label="Categories (live)"value={counts.categoryCount} />
       </div>
 
-      {/* ===== Charts grid ============================================ */}
+      {/* Core charts */}
       <div className={styles.chartsGrid}>
-        {/* 1️⃣ Sales vs Orders */}
-        <Card title="7-Day Sales vs Orders" span>
+        {/* Sales vs Orders */}
+        <ChartCard title="7-Day Sales vs Orders" span>
           <ResponsiveContainer width="100%" height={260}>
             <LineChart data={dailySales} margin={{ top: 10, right: 20 }}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -140,147 +112,53 @@ export default function ClientAnalytics({ baseStats }: Props) {
               <YAxis />
               <Tooltip formatter={(v: number) => `₹${v.toLocaleString()}`} />
               <Legend />
-              <Line
-                dataKey="sales"
-                name="Sales (₹)"
-                stroke="#007EA7"
-                strokeWidth={2}
-              />
-              <Line
-                dataKey="orders"
-                name="Orders"
-                stroke="#FCA311"
-                strokeWidth={2}
-              />
+              <Line dataKey="sales" name="Sales (₹)" stroke="#007EA7" strokeWidth={2} />
+              <Line dataKey="orders" name="Orders"     stroke="#FCA311" strokeWidth={2} />
             </LineChart>
           </ResponsiveContainer>
-        </Card>
+        </ChartCard>
 
-        {/* 2️⃣ Revenue by Category (pie) */}
-        <Card title="Revenue by Category">
+        {/* Revenue share */}
+        <ChartCard title="Revenue by Category">
           <ResponsiveContainer width="100%" height={260}>
             <PieChart>
               <Pie
                 dataKey="value"
                 data={revenueByCategory}
-                cx="50%"
-                cy="50%"
+                cx="50%" cy="50%"
                 outerRadius={90}
-                label={(d) => d.name}
+                label={({ name }) => name}
               >
                 {revenueByCategory.map((_, i) => (
-                  <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                  <Cell key={i} fill={["#007EA7","#003459","#FCA311","#E5E5E5","#00171F"][i]} />
                 ))}
               </Pie>
               <Tooltip formatter={(v: number) => `₹${v.toLocaleString()}`} />
             </PieChart>
           </ResponsiveContainer>
-        </Card>
+        </ChartCard>
 
-        {/* 3️⃣ Top Products (horizontal bar) */}
-        <Card title="Top 5 Products by Sales">
+        {/* Top products */}
+        <ChartCard title="Top 5 Products by Sales">
           <ResponsiveContainer width="100%" height={260}>
             <BarChart data={topProducts} layout="vertical" margin={{ left: 50 }}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis type="number" />
               <YAxis type="category" dataKey="name" width={140} />
               <Tooltip formatter={(v: number) => `₹${v.toLocaleString()}`} />
-              <Bar dataKey="sales" fill="#003459" radius={[0, 8, 8, 0]} />
+              <Bar dataKey="sales" fill="#003459" radius={[0,8,8,0]} />
             </BarChart>
           </ResponsiveContainer>
-        </Card>
-
-        {/* 4️⃣ Revenue Growth (radar) */}
-        <Card title="Monthly Revenue Growth vs Goal">
-          <ResponsiveContainer width="100%" height={260}>
-            <RadarChart
-              outerRadius={90}
-              data={[{ m: "May", g: kpi.revenueGrowth, goal: 8 }]}
-            >
-              <PolarGrid />
-              <PolarAngleAxis dataKey="m" />
-              <Radar
-                dataKey="g"
-                name="Actual"
-                stroke="#007EA7"
-                fill="#007EA7"
-                fillOpacity={0.6}
-              />
-              <Radar
-                dataKey="goal"
-                name="Goal"
-                stroke="#FCA311"
-                fill="#FCA311"
-                fillOpacity={0.3}
-              />
-              <Legend />
-              <Tooltip formatter={(v: number) => `${v}%`} />
-            </RadarChart>
-          </ResponsiveContainer>
-        </Card>
-
-        {/* 5️⃣ Geo Treemap */}
-        <Card title="Sales by Metro City">
-          <ResponsiveContainer width="100%" height={260}>
-            <Treemap
-              data={geoSales}
-              dataKey="size"
-              nameKey="name"
-              stroke="#fff"
-              fill="#003459"
-              ratio={4 / 3}
-            />
-          </ResponsiveContainer>
-        </Card>
-
-        {/* 6️⃣-10️⃣ KPI tiles */}
-        <MiniStat
-          label="Conversion Rate"
-          value={`${kpi.conversionRate}%`}
-        />
-        <MiniStat label="Refund Rate" value={`${kpi.refundRate}%`} />
-        <MiniStat
-          label="Cart Abandonment"
-          value={`${kpi.cartAbandonmentRate}%`}
-        />
-        <MiniStat
-          label="Returning Customers"
-          value={`${kpi.returningCustomerRate}%`}
-        />
-        <MiniStat
-          label="Daily Active Users"
-          value={kpi.dailyActiveUsers}
-        />
+        </ChartCard>
       </div>
     </>
   );
 }
 
-/* ───────────────────────── Reusable components ────────────────────────── */
-function Card({
-  title,
-  children,
-  span,
-}: {
-  title: string;
-  children: React.ReactNode;
-  span?: boolean;
-}) {
-  return (
-    <div className={span ? styles.cardSpan : styles.card}>
-      <h4 className={styles.cardTitle}>{title}</h4>
-      {children}
-    </div>
-  );
-}
-
-function SummaryCard({
-  label,
-  value,
-}: {
-  label: string;
-  value: string | number;
-}) {
+// ──────────────────────────────────────────
+// Minor reusable components
+// ──────────────────────────────────────────
+function SummaryCard({ label, value }: { label: string; value: number|string }) {
   return (
     <div className={styles.statCard}>
       <h3>{label}</h3>
@@ -289,17 +167,15 @@ function SummaryCard({
   );
 }
 
-function MiniStat({
-  label,
-  value,
+function ChartCard({
+  title, children, span
 }: {
-  label: string;
-  value: string | number;
+  title: string; children: React.ReactNode; span?: boolean;
 }) {
   return (
-    <div className={styles.miniStat}>
-      <span className={styles.miniLabel}>{label}</span>
-      <span className={styles.miniValue}>{value}</span>
+    <div className={span ? styles.cardSpan : styles.card}>
+      <h4 className={styles.cardTitle}>{title}</h4>
+      {children}
     </div>
   );
 }
