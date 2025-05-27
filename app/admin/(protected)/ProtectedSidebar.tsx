@@ -1,11 +1,10 @@
-// app/admin/(protected)/ProtectedSidebar.tsx
 "use client"
 
 import { ReactNode, useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
-import { faChartLine, faBoxOpen, faThList, faSignOutAlt, faBars } from "@fortawesome/free-solid-svg-icons"
+import { faChartLine, faBoxOpen, faThList, faSignOutAlt, faBars, faTag } from "@fortawesome/free-solid-svg-icons"
 
 interface SidebarProps {
   children: ReactNode
@@ -53,6 +52,10 @@ export default function ProtectedSidebar({ children }: SidebarProps) {
           <Link href="/admin/categories" className="sidebar-link">
             <FontAwesomeIcon icon={faThList} />
             <span className="link-text">Categories</span>
+          </Link>
+          <Link href="/admin/tags" className="sidebar-link">
+            <FontAwesomeIcon icon={faTag} />
+            <span className="link-text">Tags</span>
           </Link>
         </nav>
         <button className="sidebar-link logout" onClick={handleLogout}>
