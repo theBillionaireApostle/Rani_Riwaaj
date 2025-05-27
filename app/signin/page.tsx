@@ -1,16 +1,20 @@
+// app/signin/page.tsx
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { signInWithPopup, onAuthStateChanged, User } from "firebase/auth";
+import Image from "next/image";
+import {
+  signInWithPopup,
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  User,
+} from "firebase/auth";
 import { useRouter } from "next/navigation";
 import { auth, googleProvider } from "../firebaseClient";
 import { Poppins } from "next/font/google";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCheckCircle } from "@fortawesome/free-solid-svg-icons";
+import { Eye, EyeOff } from "lucide-react";
 
-/**
- * Import the Poppins font from Google.
- */
 const poppins = Poppins({
   subsets: ["latin"],
   weight: ["400", "600"],
@@ -18,77 +22,104 @@ const poppins = Poppins({
 });
 
 export default function SignInPage() {
-  // Holds the current Firebase user.
-  const [user, setUser] = useState<User | null>(null);
-  // Shows a spinner while signing in.
-  const [loading, setLoading] = useState(false);
-  // Wait until Firebase auth state is determined.
-  const [initialLoading, setInitialLoading] = useState(true);
-  // Error state for sign-in failures.
-  const [error, setError] = useState("");
-  // Countdown timer when the user is already signed in.
-  const [countdown, setCountdown] = useState(5);
-  // For redirecting the user.
   const router = useRouter();
+  const [user, setUser] = useState<User | null>(null);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPwd, setConfirmPwd] = useState("");
+  const [showPwd, setShowPwd] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [redirectCountdown, setRedirectCountdown] = useState(5);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
+    const unsub = onAuthStateChanged(auth, (u) => {
+      setUser(u);
       setInitialLoading(false);
     });
-    return () => unsubscribe();
+    return () => unsub();
   }, []);
 
+  // Create or update user record in our database when auth state changes
   useEffect(() => {
-    async function createUserInDB() {
-      if (user) {
-        try {
-          const res = await fetch("https://rani-riwaaj-backend-ylbq.vercel.app/api/users", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              uid: user.uid,
-              email: user.email,
-              displayName: user.displayName,
-              photoURL: user.photoURL || null,
-            }),
-          });
-          if (!res.ok) {
-            throw new Error("Failed to create/update user in DB");
-          }
-        } catch (err) {
-          console.error("Error creating/updating user:", err);
-        }
+    if (!user) return;
+    const createOrUpdateUser = async () => {
+      try {
+        const baseURL = "https://rani-riwaaj-backend-ylbq.vercel.app";
+        await fetch(`${baseURL}/api/users`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            uid: user.uid,
+            email: user.email,
+            displayName: user.displayName,
+            photoURL: user.photoURL || null,
+          }),
+        });
+      } catch (err) {
+        console.error("Failed to sync user with DB:", err);
       }
-    }
-    createUserInDB();
+    };
+    createOrUpdateUser();
   }, [user]);
 
   useEffect(() => {
     if (user) {
-      const intervalId = setInterval(() => {
-        setCountdown((prev) => prev - 1);
+      const timer = setInterval(() => {
+        setRedirectCountdown((c) => c - 1);
       }, 1000);
-      const timeoutId = setTimeout(() => {
+      const timeout = setTimeout(() => {
         router.push("/");
       }, 5000);
       return () => {
-        clearInterval(intervalId);
-        clearTimeout(timeoutId);
+        clearInterval(timer);
+        clearTimeout(timeout);
       };
     }
   }, [user, router]);
 
-  const handleSignIn = async () => {
+  const handleGoogle = async () => {
     setLoading(true);
     setError("");
     try {
       await signInWithPopup(auth, googleProvider);
-    } catch (err) {
-      console.error("Error during sign in:", err);
-      setError("Failed to sign in. Please try again.");
+    } catch (e) {
+      console.error(e);
+      setError("Google sign-in failed.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEmailAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    if (!email.trim()) return setError("Email is required.");
+    if (password.length < 6) return setError("Password must be ≥ 6 chars.");
+    if (mode === "signup" && password !== confirmPwd) {
+      return setError("Passwords must match.");
+    }
+    setLoading(true);
+    try {
+      if (mode === "signin") {
+        await signInWithEmailAndPassword(auth, email, password);
+      } else {
+        await createUserWithEmailAndPassword(auth, email, password);
+      }
+    } catch (err: any) {
+      console.error(err);
+      if (err.code?.includes("auth/email-already-in-use")) {
+        setError("Email already in use.");
+      } else if (err.code?.includes("auth/invalid-email")) {
+        setError("Invalid email address.");
+      } else if (err.code?.includes("auth/wrong-password")) {
+        setError("Wrong password.");
+      } else {
+        setError("Authentication failed.");
+      }
     } finally {
       setLoading(false);
     }
@@ -100,194 +131,275 @@ export default function SignInPage() {
         <div className="loader">Loading...</div>
         <style jsx>{`
           .signin-container {
-            width: 100vw;
             display: flex;
             align-items: center;
             justify-content: center;
-            min-height: 100vh;
-            background: #f7f7f7;
+            height: 100vh;
+            background: #f0f0f0;
           }
           .loader {
-            font-size: 18px;
-            color: #555;
+            font-size: 1.2rem;
+            color: #333;
           }
         `}</style>
       </div>
     );
   }
 
-  // If user is signed in, show a welcome view with a large green tick overlay.
   if (user) {
-    const displayName = user.displayName
-      ? user.displayName
-      : user.email
-      ? user.email.split("@")[0]
-      : "User";
-
+    const name = user.displayName || user.email?.split("@")[0] || "User";
     return (
       <div className={`${poppins.className} signin-container`}>
-        <div className="signin-card success">
-        <FontAwesomeIcon
-  icon={faCheckCircle}
-  style={{
-    color: "rgb(32, 215, 108)",
-    fontSize: "6rem",
-    fontWeight: 900,
-    marginBottom: "1.5rem",
-  }}
-/>
-          <h1>Welcome, {displayName}!</h1>
-          <p className="sub-text">You are now signed in.</p>
-          <p className="redirect-message">
-            Redirecting to the <strong>Home Page</strong> in{" "}
-            <span className="countdown">{countdown}</span> seconds...
-          </p>
+        <div className="card success">
+          <h1>Welcome, {name}!</h1>
+          <p>You are signed in.</p>
+          <p>Redirecting in {redirectCountdown}...</p>
         </div>
         <style jsx>{`
           .signin-container {
-            width: 100vw;
-            height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            background: linear-gradient(
-                rgba(0, 0, 0, 0.7),
-                rgba(0, 0, 0, 0.7)
-              ),
-              url("/images/phulkari_bagh_hero_cover.png") center/cover no-repeat;
-            padding: 0 20px;
+            height: 100vh;
+            background: #e8f5e9;
           }
-
-            
-
-
-          .signin-card {
-            background: #ffffff;
+          .card.success {
+            background: #fff;
+            padding: 2rem;
             border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-            padding: 2rem 3rem;
             text-align: center;
-            max-width: 420px;
-            width: 100%;
-            position: relative;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
           }
-          /* Success state styles */
-          .success .check-icon faCheckCircle {
-            color:rgb(32, 215, 108);
-            font-size: 6rem;
-            font-weight: 900;
-            margin-bottom: 1.5rem;
-          }
-          .success h1 {
-            font-size: 2rem;
-            margin-bottom: 0.5rem;
-            color: #333;
-          }
-          .sub-text {
-            font-size: 1.1rem;
-            color: #666;
-            margin-bottom: 1rem;
-          }
-          .redirect-message {
-            font-size: 1rem;
-            color: #555;
-            font-style: italic;
-          }
-          .countdown {
-            color: #2ecc71;
-            font-weight: bold;
-          }
+          h1 { color: #2e7d32; }
         `}</style>
       </div>
     );
   }
 
-  // Main sign-in page if user is not signed in, with a background image & overlay.
   return (
     <div className={`${poppins.className} signin-container`}>
-      <div className="signin-card">
-        <h1>Welcome to Phulkari Bagh</h1>
-        <p>Please sign in to continue</p>
-        {error && <p className="error-message">{error}</p>}
-        <button onClick={handleSignIn} className="signin-button" disabled={loading}>
-          {loading ? <span className="loader-spinner" /> : "Sign in with Google"}
+      <div className="card">
+        <div className="toggle">
+          <button
+            className={mode === "signin" ? "active" : ""}
+            onClick={() => setMode("signin")}
+          >
+            Sign In
+          </button>
+          <button
+            className={mode === "signup" ? "active" : ""}
+            onClick={() => setMode("signup")}
+          >
+            Sign Up
+          </button>
+        </div>
+        <h1>{mode === "signin" ? "Welcome Back" : "Create Account"}</h1>
+        {error && <p className="error">{error}</p>}
+        <form onSubmit={handleEmailAuth}>
+          <label>Email</label>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+
+          <label>Password</label>
+          <div className="pw-wrapper">
+            <input
+              type={showPwd ? "text" : "password"}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+            <button type="button" onClick={() => setShowPwd(!showPwd)}>
+              {showPwd ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
+          </div>
+
+          {mode === "signup" && (
+            <>
+              <label>Confirm Password</label>
+              <div className="pw-wrapper">
+                <input
+                  type={showConfirm ? "text" : "password"}
+                  value={confirmPwd}
+                  onChange={(e) => setConfirmPwd(e.target.value)}
+                  required
+                />
+                <button type="button" onClick={() => setShowConfirm(!showConfirm)}>
+                  {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+            </>
+          )}
+
+          <button type="submit" disabled={loading} className="btn primary">
+            {loading
+              ? mode === "signin"
+                ? "Signing In..."
+                : "Signing Up..."
+              : mode === "signin"
+              ? "Sign In"
+              : "Sign Up"}
+          </button>
+        </form>
+        <div className="divider">OR</div>
+        <button
+          type="button"
+          onClick={handleGoogle}
+          disabled={loading}
+          className="w-full flex items-center justify-center gap-2 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 transition disabled:opacity-60"
+        >
+          <Image
+            src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+            alt="Google logo"
+            width={20}
+            height={20}
+          />
+          {loading ? 'Please wait…' : 'Sign up with Google'}
         </button>
       </div>
+
       <style jsx>{`
         .signin-container {
-          width: 100vw;
-          height: 100vh;
           display: flex;
           align-items: center;
           justify-content: center;
-          background: linear-gradient(
-              rgba(0, 0, 0, 0.7),
-              rgba(0, 0, 0, 0.7)
-            ),
-            url("/images/phulkari_bagh_cover.png") center/cover no-repeat;
-          padding: 0 20px;
+          padding: 2rem;
+          min-height: 100vh;
+          background: linear-gradient(135deg, #e3f2fd 0%, #b3e5fc 100%);
         }
-        .signin-card {
-          background: #ffffff;
+        .card {
+          background: #fff;
           border-radius: 12px;
-          box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-          padding: 2rem 3rem;
-          text-align: center;
-          max-width: 420px;
+          padding: 2rem;
+          max-width: 400px;
           width: 100%;
+          box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+          text-align: center;
+        }
+        .toggle {
+          display: flex;
+          margin-bottom: 1rem;
+          background: #f0f0f0;
+          border-radius: 8px;
+          overflow: hidden;
+        }
+        .toggle button {
+          flex: 1;
+          padding: 0.5rem 0;
+          border: none;
+          background: none;
+          cursor: pointer;
+          font-weight: 500;
+        }
+        .toggle .active {
+          background: #0288d1;
+          color: #fff;
         }
         h1 {
-          font-size: 2rem;
           margin-bottom: 1rem;
           color: #333;
-          text-transform: uppercase;
-          letter-spacing: 1px;
         }
-        p {
-          font-size: 1.1rem;
-          margin-bottom: 1.5rem;
-          color: #666;
+        form {
+          display: flex;
+          flex-direction: column;
+          gap: 0.75rem;
         }
-        .error-message {
-          color: #e63946;
-          font-size: 1rem;
-          margin-bottom: 1rem;
+        label {
+          text-align: left;
+          font-size: 0.9rem;
+          color: #555;
         }
-        .signin-button {
-          background-color: #4285f4;
-          color: #fff;
-          border: none;
+        input {
+          padding: 0.5rem;
+          border: 1px solid #ccc;
           border-radius: 6px;
-          padding: 0.75rem 1.5rem;
-          font-size: 1.1rem;
-          cursor: pointer;
-          transition: background-color 0.3s ease, transform 0.3s ease;
+          font-size: 1rem;
           width: 100%;
         }
-        .signin-button:hover:not(:disabled) {
-          background-color: #357ae8;
+        .pw-wrapper {
+          position: relative;
+        }
+        .pw-wrapper button {
+          position: absolute;
+          top: 50%;
+          right: 0.5rem;
+          transform: translateY(-50%);
+          background: none;
+          border: none;
+          cursor: pointer;
+          color: #555;
+        }
+        .btn {
+          margin-top: 1rem;
+          padding: 0.75rem;
+          border: none;
+          border-radius: 6px;
+          font-size: 1rem;
+          cursor: pointer;
+          transition: transform 0.2s ease, background 0.2s ease;
+          width: 100%;
+        }
+        .btn.primary {
+          background: #0288d1;
+          color: #fff;
+        }
+        .btn.primary:hover:not(:disabled) {
+          background: #0277bd;
           transform: translateY(-2px);
         }
-        .signin-button:disabled {
+        .btn.google {
+          background: #db4437;
+          color: #fff;
+          border: none;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 0.75rem;
+          gap: 0.5rem;
+          border-radius: 6px;
+          transition: background 0.2s ease, transform 0.2s ease;
+        }
+        .btn.google:hover:not(:disabled) {
+          background: #c33c2e;
+          transform: translateY(-2px);
+        }
+        /* ensure transparent logo scales nicely */
+        .google-logo {
+          width: 20px;
+          height: 20px;
+        }
+        .btn:disabled {
           opacity: 0.7;
           cursor: not-allowed;
         }
-        .loader-spinner {
-          display: inline-block;
-          width: 24px;
-          height: 24px;
-          border: 3px solid #fff;
-          border-top: 3px solid rgba(255, 255, 255, 0.3);
-          border-radius: 50%;
-          animation: spin 1s linear infinite;
+        .divider {
+          margin: 1rem 0;
+          position: relative;
+          font-size: 0.9rem;
+          color: #888;
         }
-        @keyframes spin {
-          0% {
-            transform: rotate(0deg);
-          }
-          100% {
-            transform: rotate(360deg);
-          }
+        .divider::before,
+        .divider::after {
+          content: "";
+          position: absolute;
+          top: 50%;
+          width: 40%;
+          height: 1px;
+          background: #ccc;
+        }
+        .divider::before {
+          left: 0;
+        }
+        .divider::after {
+          right: 0;
+        }
+        .error {
+          color: #e53935;
+          font-size: 0.9rem;
+          margin-bottom: 0.5rem;
         }
       `}</style>
     </div>
