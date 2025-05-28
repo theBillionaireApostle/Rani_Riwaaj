@@ -4,7 +4,7 @@ import { ReactNode, useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
-import { faChartLine, faBoxOpen, faThList, faSignOutAlt, faBars, faTag } from "@fortawesome/free-solid-svg-icons"
+import { faChartLine, faBoxOpen, faThList, faSignOutAlt, faBars, faTag, faCog } from "@fortawesome/free-solid-svg-icons"
 
 interface SidebarProps {
   children: ReactNode
@@ -56,6 +56,10 @@ export default function ProtectedSidebar({ children }: SidebarProps) {
           <Link href="/admin/tags" className="sidebar-link">
             <FontAwesomeIcon icon={faTag} />
             <span className="link-text">Tags</span>
+          </Link>
+          <Link href="/admin/settings" className="sidebar-link">
+            <FontAwesomeIcon icon={faCog} />
+            <span className="link-text">Settings</span>
           </Link>
         </nav>
         <button className="sidebar-link logout" onClick={handleLogout}>
