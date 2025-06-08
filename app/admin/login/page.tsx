@@ -106,6 +106,7 @@ export default function AdminLoginPage() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       // credentials: "include", // Only needed if you rely on cookies
+credentials: "include",
       body: JSON.stringify({ username, password }),
     });
 
