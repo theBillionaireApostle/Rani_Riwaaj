@@ -94,7 +94,7 @@ export function ProductsGrid({ products }: Props) {
     const msg = encodeURIComponent(
       `I'm interested in ${p.name} priced at Rs ${p.price.toLocaleString()}. Please send me more details.`
     );
-    window.open(`https://api.whatsapp.com/send?phone=+919510394742&text=${msg}`, "_blank");
+    window.open(`https://api.whatsapp.com/send?phone=+919041798129&text=${msg}`, "_blank");
   }
 
   if (!products.length) {
