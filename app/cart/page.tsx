@@ -27,6 +27,26 @@ export default function CartPage() {
   // Cart loading & data
   const [cartLoading, setCartLoading] = useState(true);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
+
+// -------------- LOCAL STORAGE PERSISTENCE --------------
+useEffect(() => {
+  // ⬅ hydrate once on first mount
+  const stored = localStorage.getItem("rr_cart");
+  if (stored && cartItems.length === 0) {
+    try {
+      setCartItems(JSON.parse(stored));
+    } catch { /* ignore corrupt JSON */ }
+  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, []);
+
+useEffect(() => {
+  // ⬅ save every time cartItems change
+  localStorage.setItem("rr_cart", JSON.stringify(cartItems));
+}, [cartItems]);
+
+
+
   const [error, setError] = useState("");
 
   // Listen for Firebase authentication state
@@ -209,7 +229,7 @@ export default function CartPage() {
 
     return (
       <nav className={styles.nav}>
-        <div className={styles.logo}>Phulkari Bagh</div>
+        <div className={styles.logo}>RANI RIWAAJ</div>
         <div className={styles.desktopNavLinks}>
           <Link href="/">Home</Link>
           <Link href="/shop">Shop</Link>
