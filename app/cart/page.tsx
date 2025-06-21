@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -27,6 +27,8 @@ export default function CartPage() {
   // Cart loading & data
   const [cartLoading, setCartLoading] = useState(true);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
+
+
 
 // -------------- LOCAL STORAGE PERSISTENCE --------------
 useEffect(() => {
@@ -90,29 +92,32 @@ useEffect(() => {
     fetchCart();
   }, [user]);
 
+  const didInitRef = useRef(false);
+
   // Save cart to backend whenever cartItems change
   useEffect(() => {
-    async function updateCart() {
-      if (user) {
-        try {
-          console.log("Updating cart for user:", user.uid, "with items:", cartItems);
-          await fetch("https://rani-riwaaj-backend-ylbq.vercel.app/api/cart", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ userId: user.uid, items: cartItems }),
-          });
-        } catch (error: unknown) {
-          if (error instanceof Error) {
-            console.error("Error saving cart:", error.message);
-          } else {
-            console.error("Error saving cart:", error);
-          }
-        }
-      }
+  // Wait until (a) we have a user and (b) the initial GET /api/cart is done
+  if (!user || cartLoading) return;
+
+  // Skip the very first run after the initial fetch
+  if (!didInitRef.current) {
+    didInitRef.current = true;
+    return;
+  }
+
+  // ── Normal sync for every subsequent change ──
+  (async () => {
+    try {
+      await fetch("https://rani-riwaaj-backend-ylbq.vercel.app/api/cart", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: user.uid, items: cartItems }),
+      });
+    } catch (err) {
+      console.error("Error saving cart:", err);
     }
-    // Always update the cart—even if it becomes empty.
-    updateCart();
-  }, [cartItems, user]);
+  })();
+}, [cartItems, user, cartLoading]);
 
   // If auth or cart is still loading, show a loader
   if (authLoading || cartLoading) {
