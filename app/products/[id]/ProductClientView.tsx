@@ -85,7 +85,7 @@ export default function ProductClientView({
             productId: product._id,
             name: product.name,
             price: Number(product.price.replace(/[^\d]/g, "")),
-            quantity: 1,
+            quantity: 1,        
             ...(giftWrap && { giftWrap: true }),
           },
         ],
