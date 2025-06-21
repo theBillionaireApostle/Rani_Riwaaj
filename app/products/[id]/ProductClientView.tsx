@@ -75,7 +75,7 @@ export default function ProductClientView({
     // pick the correct backend in dev & prod
     const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "";
 
-    const res = await fetch(`${API_BASE}/api/cart`, {
+    const res = await fetch(`https://rani-riwaaj-backend-ylbq.vercel.app/api/cart`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
