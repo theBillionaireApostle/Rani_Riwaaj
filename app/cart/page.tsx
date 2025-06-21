@@ -62,35 +62,52 @@ useEffect(() => {
   }, []);
 
   // Load cart items from backend
-  useEffect(() => {
-    async function fetchCart() {
-      if (user) {
-        try {
-          setCartLoading(true);
-          console.log("Fetching cart for user:", user.uid);
-          const res = await fetch(`https://rani-riwaaj-backend-ylbq.vercel.app/api/cart?userId=${user.uid}`);
-          if (!res.ok) throw new Error("Failed to fetch cart");
-          const data = await res.json();
-          console.log("Fetched cart data:", data);
-          // Remove placeholder fallback; just use data.items or []
-          setCartItems(data.items || []);
-        } catch (error: unknown) {
-          if (error instanceof Error) {
-            console.error("Error fetching cart:", error.message);
-            setError(error.message || "Unable to fetch cart data.");
-          } else {
-            console.error("Error fetching cart:", error);
-            setError("Unable to fetch cart data.");
+  // Load cart items from backend + hydrate missing images
+useEffect(() => {
+  async function fetchCart() {
+    if (!user) return;
+
+    try {
+      setCartLoading(true);
+
+      // ① choose backend for dev / prod
+      const API_BASE =
+        
+        "https://rani-riwaaj-backend-ylbq.vercel.app";
+
+      // ② get the user’s saved cart
+      const res = await fetch(`${API_BASE}/api/cart?userId=${user.uid}`);
+      if (!res.ok) throw new Error("Failed to fetch cart");
+      const data = await res.json();
+
+      // ③ for every item that has no image yet, look it up
+      const itemsWithImg: CartItem[] = await Promise.all(
+        (data.items || []).map(async (it: CartItem) => {
+          if (it.image) return it; // fast-path
+
+          try {
+            const pRes = await fetch(`${API_BASE}/api/products/${it.productId}`);
+            if (!pRes.ok) throw new Error();
+            const prod = await pRes.json();
+            return { ...it, image: prod.defaultImage?.url || "" };
+          } catch {
+            return it; // leave unchanged if lookup fails
           }
-          // If there's an error, default to an empty array
-          setCartItems([]);
-        } finally {
-          setCartLoading(false);
-        }
-      }
+        })
+      );
+
+      setCartItems(itemsWithImg);
+    } catch (err: any) {
+      console.error("Error fetching cart:", err.message || err);
+      setError(err.message || "Unable to fetch cart data.");
+      setCartItems([]); // fallback to empty
+    } finally {
+      setCartLoading(false);
     }
-    fetchCart();
-  }, [user]);
+  }
+
+  fetchCart();
+}, [user]);
 
   const didInitRef = useRef(false);
 
