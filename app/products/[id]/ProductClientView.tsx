@@ -65,41 +65,47 @@ export default function ProductClientView({
 
   // ── Add to Cart ──
   async function handleAddToCart() {
-    if (!user) {
-      router.push("/signin");
-      return;
-    }
-    setBusy(true);
-    try {
-      const res = await fetch(
-        `https://rani-riwaaj-backend-ylbq.vercel.app/api/cart?userId=${encodeURIComponent(user.uid)}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            items: [
-              {
-                productId: product._id,
-                name: product.name,
-                price: Number(product.price.replace(/[^\d]/g, "")),
-                quantity: 1,
-              },
-            ],
-          }),
-        }
-      );
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Failed to add to cart");
-      toast.success("Added to cart!", { autoClose: 2000 });
-    } catch (err: any) {
-      toast.error(err.message || "Could not add – please try again.", {
-        autoClose: 2500,
-      });
-    } finally {
-      setBusy(false);
-    }
+  if (!user) {
+    router.push("/signin");
+    return;
   }
+  setBusy(true);
 
+  try {
+    // pick the correct backend in dev & prod
+    const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "";
+
+    const res = await fetch(`${API_BASE}/api/cart`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        userId: user.uid,          // ✅ move here, NOT in the query-string
+        items: [
+          {
+            productId: product._id,
+            name: product.name,
+            price: Number(product.price.replace(/[^\d]/g, "")),
+            quantity: 1,
+            ...(giftWrap && { giftWrap: true }),
+          },
+        ],
+      }),
+    });
+
+    if (!res.ok) {
+      const { error } = await res.json();
+      throw new Error(error || "Failed to add to cart");
+    }
+
+    toast.success("Added to cart!", { autoClose: 2000 });
+  } catch (err: any) {
+    toast.error(err.message || "Could not add – please try again.", {
+      autoClose: 2500,
+    });
+  } finally {
+    setBusy(false);
+  }
+}
   // ── WhatsApp Enquiry ──
   function handleWhatsApp() {
     const msg = encodeURIComponent(
