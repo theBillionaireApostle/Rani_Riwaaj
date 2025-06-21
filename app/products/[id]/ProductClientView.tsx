@@ -72,7 +72,7 @@ export default function ProductClientView({
     setBusy(true);
     try {
       const res = await fetch(
-        `/api/cart?userId=${encodeURIComponent(user.uid)}`,
+        `https://rani-riwaaj-backend-ylbq.vercel.app/api/cart?userId=${encodeURIComponent(user.uid)}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
