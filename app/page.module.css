@@ -3331,7 +3331,6 @@
 }
 /* ═══ FULL‑SCREEN HERO • 2025‑07‑23 ═════════════════════════ */
 /* Reserve space for the fixed header then let hero fill the rest */
-:global(:root) { --header-height: 60px; }
 
 .hero {
   margin-top: var(--header-height);                 /* sit below header   */
