@@ -10,8 +10,7 @@ import { onAuthStateChanged, User } from "firebase/auth";
 import { auth }                      from "../app/firebaseClient"; // adjust as needed
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faShoppingCart, faHeart } from "@fortawesome/free-solid-svg-icons";
-import { faWhatsapp }               from "@fortawesome/free-brands-svg-icons";
+import { faCartPlus, faHeart, faStar } from "@fortawesome/free-solid-svg-icons";
 
 import styles from "./productsGrid.module.css";
 
@@ -21,6 +20,11 @@ export interface Product {
   desc: string;
   price: number;
   defaultImage?: { url: string };
+  originalPrice?: number;
+  discountText?: string;      // e.g. "-17%"
+  colors?: string[];          // array of hex color codes
+  badgeLabel?: string;        // e.g. "BESTSELLER"
+  rating?: number;            // e.g. 4.6
 }
 
 interface Props {
@@ -90,69 +94,108 @@ export function ProductsGrid({ products }: Props) {
     }
   }
 
-  function handleWhatsAppEnquiry(p: Product) {
-    const msg = encodeURIComponent(
-      `I'm interested in ${p.name} priced at Rs ${p.price.toLocaleString()}. Please send me more details.`
-    );
-    window.open(`https://api.whatsapp.com/send?phone=+919041798129&text=${msg}`, "_blank");
-  }
-
   if (!products.length) {
     return <p className={styles.empty}>No products found.</p>;
   }
 
   return (
-    <div className={styles.grid}>
-      {products.map((p) => (
-        <div key={p._id} className={styles.card}>
-          {/* wishlist */}
-          <button className={styles.wishlistBtn} aria-label="Add to wishlist">
-            <FontAwesomeIcon icon={faHeart} />
-          </button>
+    <ul className={styles.productsWrapper}>
+      {products.map((p) => {
+        // Compute discount percentage
+        const discountPerc =
+          p.originalPrice && p.originalPrice > p.price
+            ? Math.round((1 - p.price / p.originalPrice) * 100)
+            : 0;
+        // Final discount text or null
+        const finalDiscountText = p.discountText ?? (discountPerc > 0 ? `-${discountPerc}%` : null);
+        // Enrich badge: use backend label or HOT DEAL if discount ≥25%
+        const badgeText = p.badgeLabel ?? (discountPerc >= 25 ? "HOT DEAL" : undefined);
+        // Enrich rating: use backend value or random 4.0–5.0
+        const displayRating =
+          typeof p.rating === "number"
+            ? p.rating
+            : parseFloat((Math.random() * 1 + 4).toFixed(1));
+        // Ensure at least three swatches: backend or fallback palette
+        const swatches = p.colors && p.colors.length
+          ? p.colors.slice(0, 3)
+          : ["#e81e61", "#06a8f5", "#4daf50"];
 
-          {/* full-card link */}
-          <Link href={`/products/${p._id}`} className={styles.linkOverlay} />
+        return (
+          <li key={p._id} className={styles.cardShell}>
+            {/* full‑card link overlay */}
+            <Link href={`/products/${p._id}`} className={styles.fullLink} />
 
-          {/* image */}
-          <div className={styles.imageWrapper}>
-            <Image
-              src={p.defaultImage?.url ?? "/placeholder.png"}
-              alt={p.name}
-              fill
-              className={styles.image}
-            />
-          </div>
+            {/* wishlist heart */}
+            <button className={styles.wishlistBtn} aria-label="Add to wishlist">
+              <FontAwesomeIcon icon={faHeart} />
+            </button>
 
-          {/* info */}
-          <h3 className={styles.name}>{p.name}</h3>
-          <p className={styles.desc}>{p.desc}</p>
-          <p className={styles.price}>Rs {p.price.toLocaleString()}</p>
+            {/* badge (e.g. BESTSELLER or HOT DEAL) */}
+            {badgeText && (
+              <div className={styles.badge}>{badgeText}</div>
+            )}
 
-          {/* actions */}
-          <div className={styles.cardButtons}>
+            {/* rating badge */}
+            <div className={styles.ratingBadge}>
+              <FontAwesomeIcon icon={faStar} />
+              <span>{displayRating.toFixed(1)}</span>
+            </div>
+
+            {/* hero image */}
+            <figure className={styles.cardHero}>
+              <Image
+                src={p.defaultImage?.url ?? "/placeholder.png"}
+                alt={p.name}
+                fill
+                sizes="(max-width: 768px) 100vw, 260px"
+                className={styles.cardHeroImg}
+              />
+            </figure>
+
+            {/* body */}
+            <div className={styles.body}>
+              <h3 className={styles.title}>{p.name}</h3>
+
+              <div className={styles.priceRow}>
+                <span className={styles.current}>
+                  ₹{p.price.toLocaleString()}
+                </span>
+                {p.originalPrice && p.originalPrice > p.price && finalDiscountText && (
+                  <>
+                    <span className={styles.original}>
+                      ₹{p.originalPrice.toLocaleString()}
+                    </span>
+                    <span className={styles.discountText}>
+                      {finalDiscountText}
+                    </span>
+                  </>
+                )}
+              </div>
+
+              {/* color swatches */}
+              <div className={styles.swatchRow}>
+                {swatches.map((c, i) => (
+                  <span
+                    key={i}
+                    className={styles.swatch}
+                    style={{ backgroundColor: c }}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* add‑to‑cart button */}
             <button
               className={styles.addButton}
               onClick={() => handleAddToCart(p)}
               disabled={loadingId === p._id}
+              aria-label="Add to cart"
             >
-              {loadingId === p._id ? (
-                "Adding…"
-              ) : (
-                <>
-                  <FontAwesomeIcon icon={faShoppingCart} /> Add to Cart
-                </>
-              )}
+              <FontAwesomeIcon icon={faCartPlus} />
             </button>
-
-            <button
-              className={styles.whatsappButton}
-              onClick={() => handleWhatsAppEnquiry(p)}
-            >
-              <FontAwesomeIcon icon={faWhatsapp} /> WhatsApp Enquiry
-            </button>
-          </div>
-        </div>
-      ))}
-    </div>
+          </li>
+        );
+      })}
+    </ul>
   );
 }
