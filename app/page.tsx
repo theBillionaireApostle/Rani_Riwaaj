@@ -170,7 +170,7 @@ export default function Home() {
   useEffect(() => {
     async function fetchProducts() {
       try {
-        const res = await fetch("http://localhost:5005/api/products/published");
+        const res = await fetch("https://rani-riwaaj-backend-ylbq.vercel.app/api/products/published");
         if (!res.ok) {
           throw new Error("Failed to fetch products");
         }
@@ -190,7 +190,7 @@ export default function Home() {
    useEffect(() => {
     async function fetchCategories() {
       try {
-        const res = await fetch("http://localhost:5005/api/categories");
+        const res = await fetch("https://rani-riwaaj-backend-ylbq.vercel.app/api/categories");
         if (!res.ok) throw new Error("Failed to fetch categories");
         setCategories(await res.json());
       } catch (err) {
@@ -216,7 +216,7 @@ export default function Home() {
     if (user) {
       async function fetchCart() {
         try {
-          const res = await fetch(`http://localhost:5005/api/cart?userId=${user!.uid}`);
+          const res = await fetch(`https://rani-riwaaj-backend-ylbq.vercel.app/api/cart?userId=${user!.uid}`);
           if (!res.ok) {
             throw new Error("Failed to fetch cart");
           }
@@ -455,7 +455,7 @@ export default function Home() {
     setCartCount(newCartCount);
 
     try {
-      const res = await fetch("http://localhost:5005/api/cart", {
+      const res = await fetch("https://rani-riwaaj-backend-ylbq.vercel.app/api/cart", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
