@@ -1,11 +1,13 @@
-:root {
-  --card-bg: #ffffff;
-  --card-shadow: rgba(0, 0, 0, 0.08);
-  --heart-color: #e91e63;
-  --badge-bg: #ff9800;
-  --star-color: #ffc107;
-  --cart-gradient: linear-gradient(135deg, #00c853 0%, #25d366 100%);
-  --swatch-border: rgba(0, 0, 0, 0.12);
+:global {
+  :root {
+    --card-bg: #ffffff;
+    --card-shadow: rgba(0, 0, 0, 0.08);
+    --heart-color: #e91e63;
+    --badge-bg: #ff9800;
+    --star-color: #ffc107;
+    --cart-gradient: linear-gradient(135deg, #00c853 0%, #25d366 100%);
+    --swatch-border: rgba(0, 0, 0, 0.12);
+  }
 }
 
 /* Grid wrapper: 4 columns desktop, 2 on mobile */
