@@ -3063,10 +3063,13 @@
 ════════════════════════════════════════════════ */
 
 /* --- 1. Fluid section headings --- */
-.sectionTitle,
-.featuredProducts h2,
-.aboutUs h2 {
+.sectionTitle {
   /* clamp(min, viewport‑relative, max) */
+  font-size: clamp(1.6rem, 2.8vw, 2.4rem) !important;
+}
+
+.featuredProducts :global(h2),
+.aboutUs :global(h2) {
   font-size: clamp(1.6rem, 2.8vw, 2.4rem) !important;
 }
 
@@ -3192,9 +3195,15 @@
 }
 
 /*  3. Ensure all section headings are centred consistently  */
-.sectionTitle,
-.featuredProducts h2,
-.aboutUs h2,
+.sectionTitle {
+  text-align: center !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  display: block !important;
+}
+
+.featuredProducts :global(h2),
+.aboutUs :global(h2),
 :global(h2) {
   text-align: center !important;
   margin-left: auto !important;
