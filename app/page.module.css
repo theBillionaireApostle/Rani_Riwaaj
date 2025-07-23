@@ -3202,9 +3202,16 @@
   display: block !important;
 }
 
+/* ─── FINAL OVERRIDE • Centre All Section Headings (2025‑07‑21) ─── */
+.sectionTitle { 
+  text-align: center !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  display: block !important;
+}
+
 .featuredProducts :global(h2),
-.aboutUs :global(h2),
-:global(h2) {
+.aboutUs :global(h2) {
   text-align: center !important;
   margin-left: auto !important;
   margin-right: auto !important;
