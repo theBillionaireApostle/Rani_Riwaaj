@@ -1,130 +1,203 @@
+:root {
+  --card-bg: #ffffff;
+  --card-shadow: rgba(0, 0, 0, 0.08);
+  --heart-color: #e91e63;
+  --badge-bg: #ff9800;
+  --star-color: #ffc107;
+  --cart-gradient: linear-gradient(135deg, #00c853 0%, #25d366 100%);
+  --swatch-border: rgba(0, 0, 0, 0.12);
+}
 
-  
-  .grid {
-    display: grid;
-    gap: 2rem;
-    grid-template-columns: repeat(auto-fill,minmax(270px,1fr));
+/* Grid wrapper: 4 columns desktop, 2 on mobile */
+.productsWrapper {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.25rem;
+  padding: 0 0.5rem 1rem;
+}
+@media (max-width: 600px) {
+  .productsWrapper {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
   }
-  
-  @media (min-width:1200px){
-    .grid { grid-template-columns: repeat(4,1fr); }
-  }
-  
-  .card {
-    position: relative;
-    background: var(--card-bg);
-    border-radius: 8px;
-    box-shadow: 0 2px 8px var(--card-shadow);
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    transition: transform .2s ease;
-  }
-  .card:hover {
-    transform: translateY(-4px);
-  }
-  
-  /* invisible Link for entire card click */
-  .linkOverlay {
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    bottom: 80px; /* leave space for buttons */
-    z-index: 1;
-  }
-  
-  /* wishlist heart */
-  .wishlistBtn {
-    position: absolute;
-    top: 0.75rem;
-    right: 0.75rem;
-    background: none;
-    border: none;
-    color: var(--heart);
-    font-size: 1.4rem;
-    z-index: 2;
-    cursor: pointer;
-  }
-  .wishlistBtn:hover {
-    opacity: 0.8;
-  }
-  
-  /* image */
-  .imageWrapper {
-    position: relative;
-    width: 100%;
-    height: 260px;
-  }
-  .image {
-    object-fit: cover;
-  }
-  
-  /* text */
-  .name {
-    margin: 1rem;
-    font-size: 1.1rem;
-    font-weight: 600;
-    color: #222;
-  }
-  .desc {
-    margin: 0 1rem 0.75rem;
-    font-size: 0.95rem;
-    color: #555;
-    flex: 1;
-  }
-  .price {
-    margin: 0 1rem 1rem;
-    font-size: 1rem;
-    font-weight: 700;
-    color: #000;
-  }
-  
-  /* buttons row */
-  /* Replace your existing .cardButtons */
-.cardButtons {
-    display: flex;
-    flex-direction: column;    /* ← stack items vertically */
-    gap: 0.75rem;               /* space between the buttons */
-    padding: 0 1rem 1rem;
-    margin-top: auto;
-    z-index: 2;
-  }
-  
-  /* Ensure each button fills the width */
-  .addButton,
-  .whatsappButton {
-    width: 100%;               /* ← full width */
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.4rem;
-    padding: 0.65rem;
-    font-size: 0.95rem;
-    border: none;
-    border-radius: 4px;
-    color: #fff;
-    cursor: pointer;
-    transition: background .2s, transform .2s;
-  }
-  
-  .addButton {
-    background: var(--primary);
-  }
-  .addButton:hover {
-    background: var(--primary-dark);
-    transform: scale(1.02);
-  }
-  .whatsappButton {
-    background: var(--whatsapp);
-  }
-  .whatsappButton:hover {
-    background: var(--whatsapp-dark);
-    transform: scale(1.02);
-  }
-  
-  /* empty state */
-  .empty {
-    grid-column: 1/-1;
-    text-align: center;
-    color: #777;
-    padding: 2rem 0;
-  }
+}
+
+/* Card shell */
+.cardShell {
+  position: relative;
+  background: var(--card-bg);
+  border-radius: 22px;
+  box-shadow: 0 14px 36px var(--card-shadow);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+.cardShell:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 16px 38px rgba(0, 0, 0, 0.12);
+}
+
+/* Full-card link overlay */
+.fullLink {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+/* Wishlist button */
+.wishlistBtn {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 4;
+  background: rgba(255, 255, 255, 0.9);
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  display: grid;
+  place-items: center;
+  font-size: 1rem;
+  color: var(--heart-color);
+  cursor: pointer;
+  transition: background 0.25s;
+}
+.wishlistBtn:hover {
+  background: #fff;
+}
+
+/* Badge */
+.badge {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 4;
+  background: var(--badge-bg);
+  color: #fff;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+/* Rating badge */
+.ratingBadge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 4;
+  background: #fff;
+  padding: 4px 6px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #333;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+}
+.ratingBadge svg {
+  color: var(--star-color);
+  font-size: 0.95rem;
+}
+
+/* Image container */
+.cardHero {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+}
+.cardHeroImg {
+  object-fit: cover;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.4s ease;
+}
+.cardShell:hover .cardHeroImg {
+  transform: scale(1.1);
+}
+
+/* Card body */
+.body {
+  padding: 0.75rem 1rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: #222;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Price & discount */
+.priceRow {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin: 0;
+}
+.current {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+.original {
+  text-decoration: line-through;
+  color: #888;
+  font-size: 0.95rem;
+}
+.discountText {
+  color: var(--badge-bg);
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+/* Color swatches */
+.swatchRow {
+  display: flex;
+  gap: 0.4rem;
+}
+.swatch {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1px solid var(--swatch-border);
+  box-shadow: 0 0 0 1px var(--swatch-border);
+}
+
+/* Floating cart-plus button */
+.addButton {
+  position: absolute;
+  bottom: 1rem;
+  right: 1rem;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--cart-gradient);
+  display: grid;
+  place-items: center;
+  font-size: 1rem;
+  color: #fff;
+  border: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+.cardShell:hover .addButton {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+}
+.addButton:disabled {
+  opacity: 0.6;
+  cursor: default;
+  box-shadow: none;
+}
