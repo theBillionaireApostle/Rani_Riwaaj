@@ -9,6 +9,7 @@
 
 
 :root {
+  --header-height: 60px;
   --background: #ffffff;
   --foreground: #171717;
   --color-primary: #333;
@@ -18,50 +19,20 @@
   --color-dark: #222;
   --color-light: #fff;
   --transition-speed: 0.3s;
-  --header-height: 70px;
 
   --primary-color: #4a90e2;       /* Professional blue */
---primary-dark: #357ABD;
---secondary-color: #50E3C2;     /* A subtle aqua accent */
---secondary-dark: #3BAB9E;
---accent-color: #f5a623;        /* Warm accent for highlights */
---error-color: #e63946;
---bg-color: #ffffff;
---light-bg: #f6f8fa;
---text-color: #2c3e50;
---muted-text: #7f8c8d;
---font-family-main: 'Poppins', sans-serif;
---transition-speed: 0.3s;
---border-radius: 10px;
---header-height: 70px;
---sidebar-width: 220px;
-
---primary-color: #4285f4;
---primary-dark: #357ae8;
---secondary-color: #25d366;
---error-color: #e63946;
---font-family-main: "Poppins", sans-serif;
---transition-speed: 0.3s;
---border-radius: 8px;
-
- --primary: #2962ff;
-    --primary-dark: #0039cb;
-    --whatsapp: #25d366;
-    --whatsapp-dark: #1ebe57;
-    --card-bg: #fff;
-    --card-shadow: rgba(0,0,0,0.08);
-    --heart: #e91e63;
-
-
---color-bg: #ffffff;       /* Page background */
---color-text: #333333;     /* Default text color */
---color-light: #ffffff;    /* Lighter background (e.g., cards) */
---color-dark: #000000;     /* Dark color for contrast */
---color-primary: #0070f3;  /* Accent color (buttons, highlights) */
---color-secondary: #ff4081;/* Secondary accent color (icons, highlights) */
---header-height: 70px;
---transition-speed: 0.3s;  /* Transition speed for hovers, animations */
-
+  --primary-dark: #357ABD;
+  --secondary-color: #50E3C2;     /* A subtle aqua accent */
+  --secondary-dark: #3BAB9E;
+  --accent-color: #f5a623;        /* Warm accent for highlights */
+  --error-color: #e63946;
+  --bg-color: #ffffff;
+  --light-bg: #f6f8fa;
+  --text-color: #2c3e50;
+  --muted-text: #7f8c8d;
+  --font-family-main: 'Poppins', sans-serif;
+  --border-radius: 10px;
+  --sidebar-width: 220px;
 }
 
 
