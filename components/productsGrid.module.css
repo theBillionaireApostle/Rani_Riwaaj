@@ -1,14 +1,3 @@
-:global {
-  :root {
-    --card-bg: #ffffff;
-    --card-shadow: rgba(0, 0, 0, 0.08);
-    --heart-color: #e91e63;
-    --badge-bg: #ff9800;
-    --star-color: #ffc107;
-    --cart-gradient: linear-gradient(135deg, #00c853 0%, #25d366 100%);
-    --swatch-border: rgba(0, 0, 0, 0.12);
-  }
-}
 
 /* Grid wrapper: 4 columns desktop, 2 on mobile */
 .productsWrapper {
@@ -27,9 +16,9 @@
 /* Card shell */
 .cardShell {
   position: relative;
-  background: var(--card-bg);
+  background: #ffffff;
   border-radius: 22px;
-  box-shadow: 0 14px 36px var(--card-shadow);
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.08);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -61,7 +50,7 @@
   display: grid;
   place-items: center;
   font-size: 1rem;
-  color: var(--heart-color);
+  color: #e91e63;
   cursor: pointer;
   transition: background 0.25s;
 }
@@ -76,7 +65,7 @@
   left: 50%;
   transform: translateX(-50%);
   z-index: 4;
-  background: var(--badge-bg);
+  background: #ff9800;
   color: #fff;
   padding: 4px 8px;
   border-radius: 6px;
@@ -103,7 +92,7 @@
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
 }
 .ratingBadge svg {
-  color: var(--star-color);
+  color: #ffc107;
   font-size: 0.95rem;
 }
 
@@ -159,7 +148,7 @@
   font-size: 0.95rem;
 }
 .discountText {
-  color: var(--badge-bg);
+  color: #ff9800;
   font-size: 0.95rem;
   font-weight: 600;
 }
@@ -173,8 +162,8 @@
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  border: 1px solid var(--swatch-border);
-  box-shadow: 0 0 0 1px var(--swatch-border);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.12);
 }
 
 /* Floating cart-plus button */
@@ -185,7 +174,7 @@
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  background: var(--cart-gradient);
+  background: linear-gradient(135deg, #00c853 0%, #25d366 100%);
   display: grid;
   place-items: center;
   font-size: 1rem;
