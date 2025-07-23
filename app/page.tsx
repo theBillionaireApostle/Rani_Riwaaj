@@ -3,11 +3,13 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState, useMemo, useEffect, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation"; // for redirection
 // Import FontAwesome icons
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faShoppingCart, faHeart,faThLarge,faChevronLeft, faChevronRight } from "@fortawesome/free-solid-svg-icons";
-import { faWhatsapp } from "@fortawesome/free-brands-svg-icons";
+import { faShoppingCart, faHeart, faThLarge, faChevronLeft, faChevronRight, faFilter } from "@fortawesome/free-solid-svg-icons";
+import { faWhatsapp,faInstagram, faFacebookF, faLinkedinIn } from "@fortawesome/free-brands-svg-icons";
+import { faCartPlus } from "@fortawesome/free-solid-svg-icons";
 import {
   
   faStar as faStarSolid,
@@ -23,6 +25,18 @@ function chunk<T>(arr: T[], size: number): T[][] {
   const out: T[][] = [];
   for (let i = 0; i < arr.length; i += size) {
     out.push(arr.slice(i, i + size));
+  }
+  return out;
+}
+
+// Ensure we always return at least `count` items by repeating from the start
+function ensureMin<T>(arr: T[], count: number): T[] {
+  if (arr.length >= count) return arr.slice(0, count);
+  const out = [...arr];
+  let i = 0;
+  while (out.length < count && arr.length > 0) {
+    out.push(arr[i % arr.length]);
+    i += 1;
   }
   return out;
 }
@@ -45,8 +59,8 @@ interface Category {
 type Product = {
   _id: string;
   name: string;
-  price: number;
-  originalPrice?: number;
+  price: number | string;
+  originalPrice?: number | string;
   colors?: string[];
   sizes?: string[];
   reviews?: number;
@@ -54,6 +68,7 @@ type Product = {
   justIn?: boolean;
   badgeLabel?: string;
   defaultImage?: { url: string };
+  additionalImages?: string[];
 };
 
 interface Props {
@@ -67,6 +82,23 @@ interface Props {
 
 export default function Home() {
   const router = useRouter();
+  // ── HERO CAROUSEL ─────────────────────────────────
+  const heroImages = [
+    "/images/phulkari_bagh_cover.png",
+    "/images/phulkari_bagh_cover.png",
+    "/images/phulkari_bagh_cover.png",
+    "/images/phulkari_bagh_cover.png",
+  ];
+  const [heroIndex, setHeroIndex] = useState(0);
+
+  // cycle images every 5 s
+  useEffect(() => {
+    const id = setInterval(
+      () => setHeroIndex((i) => (i + 1) % heroImages.length),
+      5000
+    );
+    return () => clearInterval(id);
+  }, [heroImages.length]);
   // Products state initialized to an empty array
   const [products, setProducts] = useState<any[]>([]);
   const [cartCount, setCartCount] = useState(0);
@@ -75,6 +107,10 @@ export default function Home() {
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
+  // Additional filter states
+  const [priceRange, setPriceRange] = useState(5000);
+  const [category, setCategory] = useState("");
+  const [availability, setAvailability] = useState("all");
 
   const ITEMS_PER_PAGE = 6;
   const totalItems = (categories.length ?? 0) + 1; // +1 for “All”
@@ -91,9 +127,10 @@ export default function Home() {
   | "price-asc"
   | "price-desc"
 >("date-desc"); 
-  const [filterJustIn, setFilterJustIn] = useState("");
   // Visible count for lazy loading
   const [visibleCount, setVisibleCount] = useState(10);
+  // sidebar visibility for Filter drawer
+  const [filterOpen, setFilterOpen] = useState(false);
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
   // New state for Firebase user and auth loading
@@ -133,7 +170,7 @@ export default function Home() {
   useEffect(() => {
     async function fetchProducts() {
       try {
-        const res = await fetch("https://rani-riwaaj-backend-ylbq.vercel.app/api/products/published");
+        const res = await fetch("http://localhost:5005/api/products/published");
         if (!res.ok) {
           throw new Error("Failed to fetch products");
         }
@@ -153,7 +190,7 @@ export default function Home() {
    useEffect(() => {
     async function fetchCategories() {
       try {
-        const res = await fetch("https://rani-riwaaj-backend-ylbq.vercel.app/api/categories");
+        const res = await fetch("http://localhost:5005/api/categories");
         if (!res.ok) throw new Error("Failed to fetch categories");
         setCategories(await res.json());
       } catch (err) {
@@ -179,7 +216,7 @@ export default function Home() {
     if (user) {
       async function fetchCart() {
         try {
-          const res = await fetch(`https://rani-riwaaj-backend-ylbq.vercel.app/api/cart?userId=${user.uid}`);
+          const res = await fetch(`http://localhost:5005/api/cart?userId=${user!.uid}`);
           if (!res.ok) {
             throw new Error("Failed to fetch cart");
           }
@@ -215,19 +252,15 @@ export default function Home() {
   // Reset visible count when filtered/sorted products change
   useEffect(() => {
     setVisibleCount(10);
-  }, [searchTerm, sortOption, filterJustIn, products]);
+  }, [searchTerm, sortOption, products]);
 
   // Derived data: filtering and sorting
-  const filteredProducts = useMemo(() => {
-    return products.filter((p) =>
-      p.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
-      (filterJustIn === ""
-        ? true
-        : filterJustIn === "justIn"
-        ? p.justIn === true
-        : p.justIn === false)
-    );
-  }, [products, searchTerm, filterJustIn]);
+  const filteredProducts = useMemo(
+    () => products.filter((p) =>
+      p.name.toLowerCase().includes(searchTerm.toLowerCase())
+    ),
+    [products, searchTerm]
+  );
 
   const sortedProducts = useMemo(() => {
     const sorted = [...filteredProducts];
@@ -306,6 +339,9 @@ export default function Home() {
     });
   }, [sortedProducts]);
 
+  // total count used in controls bar
+  const totalProducts = sortedProducts.length;
+
   // Products to display based on lazy loading
   const visibleProducts = useMemo(
     () => enrichedProducts.slice(0, visibleCount),
@@ -379,7 +415,7 @@ export default function Home() {
 
   // --- Add to Cart Handler ---
   const handleAddToCart = async (product: any) => {
-    const priceNum = Number(product.price.replace(/[^\d]/g, ""));
+    const priceNum = parsePrice(product.price);
     let updatedCartItems: CartItem[];
 
     const existingItem = cartItems.find(
@@ -419,7 +455,7 @@ export default function Home() {
     setCartCount(newCartCount);
 
     try {
-      const res = await fetch("https://rani-riwaaj-backend-ylbq.vercel.app/api/cart", {
+      const res = await fetch("http://localhost:5005/api/cart", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -471,6 +507,18 @@ export default function Home() {
     );
   };
 
+  // Placeholder function for filter application
+  const applyFilters = () => {
+    console.log("Filters applied");
+    setFilterOpen(false); // close modal after applying
+  };
+
+  // --- New Arrivals helper ---------------------------------
+  const justInProducts = enrichedProducts.filter((p) => p.justIn);
+  const newArrivalProducts = justInProducts.length
+    ? ensureMin(justInProducts, 4)
+    : enrichedProducts.slice(0, 4);
+
   return (
     <main className={styles.main}>
       {/* Header with flex layout */}
@@ -502,59 +550,221 @@ export default function Home() {
               </Link>
             </div>
           )}
+          <a
+            href="https://api.whatsapp.com/send?phone=+919510394742&text=Hi%20I%20have%20an%20enquiry"
+            className={styles.enquireBtn}
+            target="_blank"
+            rel="noopener"
+          >
+            <FontAwesomeIcon icon={faWhatsapp} />
+            <span>Enquire&nbsp;Now</span>
+          </a>
         </div>
       </nav>
 
-      {/* Hero Section */}
+      {/* ─────────── HERO – sliding carousel ─────────── */}
       <section id="hero" className={styles.hero}>
-        <div className={styles.heroContent}>
+        {/* — SLIDES — */}
+        <div className={styles.heroSliderWrapper}>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={heroIndex}
+              initial={{ opacity: 0, scale: 1.05 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.8, ease: "easeInOut" }}
+              className={styles.motionSlide}
+            >
+              <Image
+                src={heroImages[heroIndex]}
+                alt=""
+                fill
+                sizes="100vw"
+                priority
+                className={styles.heroSlide}
+              />
+            </motion.div>
+          </AnimatePresence>
+        </div>
+
+        {/* — OVERLAY TEXT — */}
+        <motion.div
+          className={styles.heroContent}
+          key={`text-${heroIndex}`}
+          initial={{ opacity: 0, y: 25 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -25 }}
+          transition={{ duration: 0.6, ease: "easeOut" }}
+        >
           <h1>Experience Phulkari</h1>
           <p>
-            Embrace the vibrant colors, intricate designs, and cultural richness of traditional Phulkari craftsmanship.
+            Embrace the vibrant colors, intricate designs, and cultural richness
+            of traditional Phulkari craftsmanship.
           </p>
-          <button
-            className={styles.heroButton}
-            onClick={() => {
-              const shopSection = document.getElementById("shop");
-              if (shopSection) {
-                shopSection.scrollIntoView({ behavior: "smooth" });
-              }
-            }}
-          >
-            Shop Now
-          </button>
+        </motion.div>
+
+        {/* — DOTS — */}
+        <div className={styles.heroDots}>
+          {heroImages.map((_, i) => (
+            <button
+              key={i}
+              type="button"
+              aria-label={`Go to slide ${i + 1}`}
+              className={`${styles.dot} ${
+                i === heroIndex ? styles.activeDot : ""
+              }`}
+              onClick={(e) => {
+                e.stopPropagation();
+                setHeroIndex(i);
+              }}
+            />
+          ))}
         </div>
       </section>
 
-      {/* Controls: Search, Sort, Filter */}
-      <section className={styles.controls}>
-        <input
-          type="text"
-          placeholder="Search products..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className={styles.searchInput}
-        />
-        <select
-  value={sortOption}
-  onChange={(e) => setSortOption(e.target.value as SortOption)}
-  className={styles.selectInput}
->
-  <option value="date-desc">Date Added: Newest First</option>
-  <option value="date-asc">Date Added: Oldest First</option>
-  <option value="price-asc">Price: Low to High</option>
-  <option value="price-desc">Price: High to Low</option>
-</select>
-        <select
-          value={filterJustIn}
-          onChange={(e) => setFilterJustIn(e.target.value)}
-          className={styles.selectInput}
-        >
-          <option value="">All Products</option>
-          <option value="justIn">Just In</option>
-          <option value="notJustIn">Not Just In</option>
-        </select>
-      </section>
+      {/* Controls: Filter, Count, Sort */}
+      {!filterOpen && (
+        <section className={styles.controls}>
+          {/* Left – Filter button */}
+          <button
+            className={styles.filterBtn}
+            onClick={() => setFilterOpen(true)}
+            aria-label="Open filters"
+          >
+            <FontAwesomeIcon icon={faFilter} className={styles.filterIcon} />
+            Filter
+          </button>
+
+          {/* Centre – product count */}
+          <span className={styles.productsCount}>
+            {totalProducts} Products
+          </span>
+
+          {/* Right – sort dropdown */}
+          <select
+            value={sortOption}
+            onChange={(e) => setSortOption(e.target.value as typeof sortOption)}
+            className={styles.selectInput}
+          >
+            <option value="date-desc">Relevance</option>
+            <option value="date-desc">Date Added: Newest First</option>
+            <option value="date-asc">Date Added: Oldest First</option>
+            <option value="price-asc">Price: Low to High</option>
+            <option value="price-desc">Price: High to Low</option>
+          </select>
+        </section>
+      )}
+
+      {filterOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4">
+          <div className="relative bg-white rounded-xl p-6 w-full max-w-md shadow-lg">
+            {/* Close Button */}
+            <button
+              className="absolute top-4 right-4 text-2xl font-bold text-gray-500 hover:text-black"
+              onClick={() => setFilterOpen(false)}
+            >
+              &times;
+            </button>
+
+            {/* Title */}
+            <h2 className="text-2xl font-semibold mb-6 text-gray-800 text-center">
+              Filter Products
+            </h2>
+
+            {/* Sort By Control */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Sort By
+              </label>
+              <select
+                value={sortOption}
+                onChange={(e) => setSortOption(e.target.value as typeof sortOption)}
+                className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="date-desc">Relevance</option>
+                <option value="date-desc">Date Added: Newest First</option>
+                <option value="date-asc">Date Added: Oldest First</option>
+                <option value="price-asc">Price: Low to High</option>
+                <option value="price-desc">Price: High to Low</option>
+              </select>
+            </div>
+
+            {/* Price Range Control */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Max Price (₹{priceRange})
+              </label>
+              <input
+                type="range"
+                min="100"
+                max="20000"
+                step="100"
+                value={priceRange}
+                onChange={(e) => setPriceRange(Number(e.target.value))}
+                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+              />
+            </div>
+
+            {/* Category Control */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Category
+              </label>
+              <select
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">All</option>
+                {categories.map((c: Category) => (
+                  <option key={c._id} value={c.name}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Availability Control */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Availability
+              </label>
+              <div className="flex items-center gap-4">
+                <label className="inline-flex items-center">
+                  <input
+                    type="radio"
+                    name="availability"
+                    value="all"
+                    checked={availability === "all"}
+                    onChange={() => setAvailability("all")}
+                    className="accent-blue-600"
+                  />
+                  <span className="ml-1">All</span>
+                </label>
+                <label className="inline-flex items-center">
+                  <input
+                    type="radio"
+                    name="availability"
+                    value="in-stock"
+                    checked={availability === "in-stock"}
+                    onChange={() => setAvailability("in-stock")}
+                    className="accent-blue-600"
+                  />
+                  <span className="ml-1">In Stock</span>
+                </label>
+              </div>
+            </div>
+
+            {/* Apply Button */}
+            <button
+              onClick={applyFilters}
+              className="w-full bg-gradient-to-r from-blue-600 to-blue-400 text-white py-3 mt-4 rounded-md font-semibold hover:from-blue-700 hover:to-blue-500 transition-all duration-300"
+            >
+              Apply Filters
+            </button>
+          </div>
+        </div>
+      )}
 
       <section className={styles.categoryBar}>
     <div className={styles.container}>
@@ -589,7 +799,7 @@ export default function Home() {
             </button>
 
             {/* DYNAMIC CATEGORY CARDS */}
-            {categories.map((c) => (
+            {categories.map((c: Category) => (
               <Link
                  key={c._id}
                  href={`/category/${c.slug}`}          // ← new URL
@@ -629,139 +839,547 @@ export default function Home() {
     </div>
   </section>
 
-      {/* Products Section with Loader */}
-     {/* Products Section with Loader */}
-     <section id="shop" className={styles.featuredProducts}>
-      <h2 className={styles.sectionTitle}>Featured Collections</h2>
+     {/* —————————————————————————————
+     PRODUCTS  ✦  Featured Collections
+————————————————————————————— */}
+<section id="shop" className={styles.featuredProducts}>
+  <h2 className={styles.sectionTitle}>Featured Collections</h2>
 
-      {productsLoading ? (
-        <div className={styles.productsLoader}>
-          <div className={styles.spinner}></div>
-        </div>
-      ) : (
-        <div className={styles.viewport} ref={viewportRef}>
-        <div className={styles.productsWrapper}>
-          {visibleProducts.map((p) => (
-            <Link
-              key={p._id}
-              href={`/products/${p._id}`}
-              className={styles.productItemLink}
-            >
-              <div className={styles.productItem}>
-                <div className={styles.productTopBar}>
+  {productsLoading ? (
+    <div className={styles.productsLoader}>
+      <div className={styles.spinner} />
+    </div>
+  ) : (
+    <div className={styles.viewport} ref={viewportRef}>
+      <ul className={styles.productsWrapper}>
+        {visibleProducts.map((p) => (
+          <li key={p._id} className={styles.cardShell}>
+            <Link href={`/products/${p._id}`} className={styles.cardLink}>
+              {/* ── IMAGE + TOP BAR ───────────────────────────── */}
+              <figure className={styles.cardHero}>
+                {[
+                  p.defaultImage?.url || "/placeholder.png",
+                  ...(p.additionalImages ?? [])
+                ].slice(0, 4).map((src, idx) => (
+                  <Image
+                    key={idx}
+                    src={src}
+                    alt={p.name}
+                    fill
+                    sizes="(max-width: 768px) 100vw, 280px"
+                    className={`${styles.cardHeroImg} ${idx > 0 ? styles.slideImg : ""}`}
+                    style={{ animationDelay: `${idx * 3}s` }}
+                  />
+                ))}
+                <div className={styles.topBar}>
                   <button
-                    className={styles.wishlistBtn}
-                    aria-label="Add to Wishlist"
+                    className={styles.wishlist}
+                    aria-label="Add to wishlist"
+                    onClick={(e) => e.preventDefault()}
                   >
                     <FontAwesomeIcon icon={faHeart} />
                   </button>
-                  {p.justIn && (
-                    <div className={styles.badgeJustIn}>Just In</div>
-                  )}
+
+                  {p.justIn && <span className={styles.badgeJustIn}>NEW</span>}
                   {p.badgeLabel && (
-                    <div className={styles.badgeMain}>{p.badgeLabel}</div>
+                    <span className={styles.badgeMain}>{p.badgeLabel}</span>
                   )}
                   {p.rating != null && (
-                    <div className={styles.ratingBadge}>
+                    <span className={styles.rating}>
                       <FontAwesomeIcon icon={faStarSolid} />
                       {p.rating.toFixed(1)}
-                    </div>
+                    </span>
+                  )}
+                </div>
+              </figure>
+
+              {/* ── TEXT INFO ────────────────────────────────── */}
+              <div className={styles.body}>
+                <h3 className={styles.name}>{p.name}</h3>
+
+                <div className={styles.priceRow}>
+                  <span className={styles.current}>₹{p.price}</span>
+                  {p.originalPrice && (
+                    <>
+                      <span className={styles.original}>
+                        ₹{p.originalPrice}
+                      </span>
+                      <span className={styles.save}>
+                        –
+                        {Math.round(
+                          (1 - p.price / p.originalPrice) * 100
+                        )}
+                        %
+                      </span>
+                    </>
                   )}
                 </div>
 
-                <div className={styles.productImage}>
-                  <Image
-                    src={p.defaultImage?.url || "/placeholder.png"}
-                    alt={p.name}
-                    fill
-                    style={{ objectFit: "cover" }}
-                    sizes="(max-width: 768px) 100vw, 280px"
-                  />
-                </div>
-
-                <div className={styles.productInfo}>
-                  <div>
-                    <h3 className={styles.productName}>{p.name}</h3>
-                    <div className={styles.priceRow}>
-                      <span className={styles.currentPrice}>
-                        ₹{p.price}
-                      </span>
-                      {p.originalPrice && (
-                        <>
-                          <span className={styles.originalPrice}>
-                            ₹{p.originalPrice}
-                          </span>
-                          <span className={styles.discountText}>
-                            Save{" "}
-                            {Math.round(
-                              (1 - p.price / p.originalPrice) * 100
-                            )}
-                            %
-                          </span>
-                        </>
-                      )}
-                    </div>
-
-                    {p.colors?.length && (
-                      <div className={styles.colorRow}>
-                        {p.colors.slice(0, 3).map((c, i) => (
-                          <span
-                            key={i}
-                            className={styles.swatch}
-                            style={{ backgroundColor: c }}
-                          />
-                        ))}
-                        {p.colors.length > 3 && (
-                          <span className={styles.moreColors}>
-                            +{p.colors.length - 3}
-                          </span>
-                        )}
-                      </div>
-                    )}
-
-                    {p.sizes?.length && (
-                      <div className={styles.sizeRow}>
-                        {p.sizes.map((s, i) => (
-                          <button key={i} className={styles.sizeOption}>
-                            {s}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-
-                    {p.reviews != null && (
-                      <div className={styles.reviewRow}>
-                        <FontAwesomeIcon
-                          icon={faStarSolid}
-                          className={styles.starIcon}
-                        />
-                        <span className={styles.reviewsCount}>
-                          {p.reviews} reviews
-                        </span>
-                      </div>
+                {!!p.colors?.length && (
+                  <div className={styles.swatchRow}>
+                    {p.colors.slice(0, 3).map((c: string) => (
+                      <span
+                        key={c}
+                        className={styles.swatch}
+                        style={{ backgroundColor: c }}
+                      />
+                    ))}
+                    {p.colors.length > 3 && (
+                      <span className={styles.more}>+{p.colors.length - 3}</span>
                     )}
                   </div>
+                )}
+              </div>
+            </Link>
 
+            {/* ── FLOATING FAB (add to cart) ───────────────── */}
+            <button
+              type="button"
+              className={styles.fab}
+              aria-label="Add to cart"
+              onClick={(e) => {
+                e.stopPropagation();
+                const btn = e.currentTarget as HTMLButtonElement;   // cache ref
+                btn.classList.add(styles.pulse);
+
+                handleAddToCart(p);                                 // perform add‑to‑cart
+
+                setTimeout(() => {
+                  if (btn.isConnected) btn.classList.remove(styles.pulse);
+                }, 420);
+              }}
+            >
+              <FontAwesomeIcon icon={faCartPlus} />
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )}
+
+  <div ref={loadMoreRef} className={styles.loadMore} />
+</section>
+
+{/* —————————————————————————————
+     TOP PICKS
+————————————————————————————— */}
+<section className={styles.featuredProducts}>
+  <h2 className={styles.sectionTitle}>Top Picks</h2>
+  <div className={styles.viewport}>
+    <ul className={styles.productsWrapper}>
+      {enrichedProducts.slice(0, 4).map((p) => (
+        <li key={p._id} className={styles.cardShell}>
+          <Link href={`/products/${p._id}`} className={styles.cardLink}>
+            {/* ── IMAGE + TOP BAR ───────────────────────────── */}
+            <figure className={styles.cardHero}>
+              {[
+                p.defaultImage?.url || "/placeholder.png",
+                ...(p.additionalImages ?? [])
+              ].slice(0, 4).map((src, idx) => (
+                <Image
+                  key={idx}
+                  src={src}
+                  alt={p.name}
+                  fill
+                  sizes="(max-width: 768px) 100vw, 280px"
+                  className={`${styles.cardHeroImg} ${idx > 0 ? styles.slideImg : ""}`}
+                  style={{ animationDelay: `${idx * 3}s` }}
+                />
+              ))}
+              <div className={styles.topBar}>
+                <button
+                  className={styles.wishlist}
+                  aria-label="Add to wishlist"
+                  onClick={(e) => e.preventDefault()}
+                >
+                  <FontAwesomeIcon icon={faHeart} />
+                </button>
+                {p.justIn && <span className={styles.badgeJustIn}>NEW</span>}
+                {p.badgeLabel && (
+                  <span className={styles.badgeMain}>{p.badgeLabel}</span>
+                )}
+                {p.rating != null && (
+                  <span className={styles.rating}>
+                    <FontAwesomeIcon icon={faStarSolid} />
+                    {p.rating.toFixed(1)}
+                  </span>
+                )}
+              </div>
+            </figure>
+            {/* ── TEXT INFO ────────────────────────────────── */}
+            <div className={styles.body}>
+              <h3 className={styles.name}>{p.name}</h3>
+              <div className={styles.priceRow}>
+                <span className={styles.current}>₹{p.price}</span>
+                {p.originalPrice && (
+                  <>
+                    <span className={styles.original}>₹{p.originalPrice}</span>
+                    <span className={styles.save}>
+                      –
+                      {Math.round((1 - p.price / p.originalPrice) * 100)}
+                      %
+                    </span>
+                  </>
+                )}
+              </div>
+              {!!p.colors?.length && (
+                <div className={styles.swatchRow}>
+                  {p.colors.slice(0, 3).map((c: string) => (
+                    <span
+                      key={c}
+                      className={styles.swatch}
+                      style={{ backgroundColor: c }}
+                    />
+                  ))}
+                  {p.colors.length > 3 && (
+                    <span className={styles.more}>+{p.colors.length - 3}</span>
+                  )}
+                </div>
+              )}
+            </div>
+          </Link>
+          {/* ── FLOATING FAB (add to cart) ───────────────── */}
+          <button
+            type="button"
+            className={styles.fab}
+            aria-label="Add to cart"
+            onClick={(e) => {
+              e.stopPropagation();
+              const btn = e.currentTarget as HTMLButtonElement;
+              btn.classList.add(styles.pulse);
+              handleAddToCart(p);
+              setTimeout(() => {
+                if (btn.isConnected) btn.classList.remove(styles.pulse);
+              }, 420);
+            }}
+          >
+            <FontAwesomeIcon icon={faCartPlus} />
+          </button>
+        </li>
+      ))}
+    </ul>
+  </div>
+</section>
+
+{/* —————————————————————————————
+     RECOMMENDED FOR YOU
+————————————————————————————— */}
+<section className={styles.featuredProducts}>
+  <h2 className={styles.sectionTitle}>Recommended for You</h2>
+  <div className={styles.viewport}>
+    <ul className={styles.productsWrapper}>
+      {enrichedProducts.slice(4, 8).map((p) => (
+        <li key={p._id} className={styles.cardShell}>
+          <Link href={`/products/${p._id}`} className={styles.cardLink}>
+            {/* ── IMAGE + TOP BAR ───────────────────────────── */}
+            <figure className={styles.cardHero}>
+              {[
+                p.defaultImage?.url || "/placeholder.png",
+                ...(p.additionalImages ?? [])
+              ].slice(0, 4).map((src, idx) => (
+                <Image
+                  key={idx}
+                  src={src}
+                  alt={p.name}
+                  fill
+                  sizes="(max-width: 768px) 100vw, 280px"
+                  className={`${styles.cardHeroImg} ${idx > 0 ? styles.slideImg : ""}`}
+                  style={{ animationDelay: `${idx * 3}s` }}
+                />
+              ))}
+              <div className={styles.topBar}>
+                <button
+                  className={styles.wishlist}
+                  aria-label="Add to wishlist"
+                  onClick={(e) => e.preventDefault()}
+                >
+                  <FontAwesomeIcon icon={faHeart} />
+                </button>
+                {p.justIn && <span className={styles.badgeJustIn}>NEW</span>}
+                {p.badgeLabel && (
+                  <span className={styles.badgeMain}>{p.badgeLabel}</span>
+                )}
+                {p.rating != null && (
+                  <span className={styles.rating}>
+                    <FontAwesomeIcon icon={faStarSolid} />
+                    {p.rating.toFixed(1)}
+                  </span>
+                )}
+              </div>
+            </figure>
+            {/* ── TEXT INFO ────────────────────────────────── */}
+            <div className={styles.body}>
+              <h3 className={styles.name}>{p.name}</h3>
+              <div className={styles.priceRow}>
+                <span className={styles.current}>₹{p.price}</span>
+                {p.originalPrice && (
+                  <>
+                    <span className={styles.original}>₹{p.originalPrice}</span>
+                    <span className={styles.save}>
+                      –
+                      {Math.round((1 - p.price / p.originalPrice) * 100)}
+                      %
+                    </span>
+                  </>
+                )}
+              </div>
+              {!!p.colors?.length && (
+                <div className={styles.swatchRow}>
+                  {p.colors.slice(0, 3).map((c: string) => (
+                    <span
+                      key={c}
+                      className={styles.swatch}
+                      style={{ backgroundColor: c }}
+                    />
+                  ))}
+                  {p.colors.length > 3 && (
+                    <span className={styles.more}>+{p.colors.length - 3}</span>
+                  )}
+                </div>
+              )}
+            </div>
+          </Link>
+          {/* ── FLOATING FAB (add to cart) ───────────────── */}
+          <button
+            type="button"
+            className={styles.fab}
+            aria-label="Add to cart"
+            onClick={(e) => {
+              e.stopPropagation();
+              const btn = e.currentTarget as HTMLButtonElement;
+              btn.classList.add(styles.pulse);
+              handleAddToCart(p);
+              setTimeout(() => {
+                if (btn.isConnected) btn.classList.remove(styles.pulse);
+              }, 420);
+            }}
+          >
+            <FontAwesomeIcon icon={faCartPlus} />
+          </button>
+        </li>
+      ))}
+    </ul>
+  </div>
+</section>
+
+{/* —————————————————————————————
+     NEW ARRIVALS
+————————————————————————————— */}
+<section className={styles.featuredProducts}>
+  <h2 className={styles.sectionTitle}>New Arrivals</h2>
+  <div className={styles.viewport}>
+    <ul className={styles.productsWrapper}>
+      {newArrivalProducts.map((p) => (
+        <li key={p._id} className={styles.cardShell}>
+          <Link href={`/products/${p._id}`} className={styles.cardLink}>
+            {/* — IMAGE + TOP BAR — */}
+            <figure className={styles.cardHero}>
+              {[
+                p.defaultImage?.url || "/placeholder.png",
+                ...(p.additionalImages ?? [])
+              ].slice(0, 4).map((src, idx) => (
+                <Image
+                  key={idx}
+                  src={src}
+                  alt={p.name}
+                  fill
+                  sizes="(max-width: 768px) 100vw, 280px"
+                  className={`${styles.cardHeroImg} ${idx > 0 ? styles.slideImg : ""}`}
+                  style={{ animationDelay: `${idx * 3}s` }}
+                />
+              ))}
+              <div className={styles.topBar}>
+                <button
+                  className={styles.wishlist}
+                  aria-label="Add to wishlist"
+                  onClick={(e) => e.preventDefault()}
+                >
+                  <FontAwesomeIcon icon={faHeart} />
+                </button>
+                <span className={styles.badgeJustIn}>NEW</span>
+              </div>
+            </figure>
+            {/* — TEXT — */}
+            <div className={styles.body}>
+              <h3 className={styles.name}>{p.name}</h3>
+              <div className={styles.priceRow}>
+                <span className={styles.current}>₹{p.price}</span>
+                {p.originalPrice && (
+                  <>
+                    <span className={styles.original}>₹{p.originalPrice}</span>
+                    <span className={styles.save}>
+                      –{Math.round((1 - p.price / p.originalPrice) * 100)}%
+                    </span>
+                  </>
+                )}
+              </div>
+            </div>
+          </Link>
+          <button
+            type="button"
+            className={styles.fab}
+            aria-label="Add to cart"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleAddToCart(p);
+            }}
+          >
+            <FontAwesomeIcon icon={faCartPlus} />
+          </button>
+        </li>
+      ))}
+    </ul>
+  </div>
+</section>
+
+{/* —————————————————————————————
+     BEST SELLERS
+————————————————————————————— */}
+<section className={styles.featuredProducts}>
+  <h2 className={styles.sectionTitle}>Best Sellers</h2>
+  <div className={styles.viewport}>
+    <ul className={styles.productsWrapper}>
+      {enrichedProducts
+        .sort((a, b) => (b.reviews ?? 0) - (a.reviews ?? 0))
+        .slice(0, 4)
+        .map((p) => (
+          <li key={p._id} className={styles.cardShell}>
+            {/* Re‑use the same card markup */}
+            <Link href={`/products/${p._id}`} className={styles.cardLink}>
+              <figure className={styles.cardHero}>
+                {[
+                  p.defaultImage?.url || "/placeholder.png",
+                  ...(p.additionalImages ?? [])
+                ].slice(0, 4).map((src, idx) => (
+                  <Image
+                    key={idx}
+                    src={src}
+                    alt={p.name}
+                    fill
+                    sizes="(max-width: 768px) 100vw, 280px"
+                    className={`${styles.cardHeroImg} ${idx > 0 ? styles.slideImg : ""}`}
+                    style={{ animationDelay: `${idx * 3}s` }}
+                  />
+                ))}
+                <div className={styles.topBar}>
                   <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleAddToCart(p);
-                    }}
-                    className={styles.addToCartBtn}
+                    className={styles.wishlist}
+                    aria-label="Add to wishlist"
+                    onClick={(e) => e.preventDefault()}
                   >
-                    ADD TO CART
+                    <FontAwesomeIcon icon={faHeart} />
                   </button>
+                  <span className={styles.badgeMain}>Bestseller</span>
+                </div>
+              </figure>
+              <div className={styles.body}>
+                <h3 className={styles.name}>{p.name}</h3>
+                <div className={styles.priceRow}>
+                  <span className={styles.current}>₹{p.price}</span>
+                  {p.originalPrice && (
+                    <>
+                      <span className={styles.original}>₹{p.originalPrice}</span>
+                      <span className={styles.save}>
+                        –{Math.round((1 - p.price / p.originalPrice) * 100)}%
+                      </span>
+                    </>
+                  )}
                 </div>
               </div>
             </Link>
-          ))}
-        </div>
-        </div>
-      )}
+            <button
+              type="button"
+              className={styles.fab}
+              aria-label="Add to cart"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleAddToCart(p);
+              }}
+            >
+              <FontAwesomeIcon icon={faCartPlus} />
+            </button>
+          </li>
+        ))}
+    </ul>
+  </div>
+</section>
 
-      <div ref={loadMoreRef} className={styles.loadMore}></div>
-    </section>
-       
+{/* —————————————————————————————
+     ON SALE
+————————————————————————————— */}
+<section className={styles.featuredProducts}>
+  <h2 className={styles.sectionTitle}>On Sale</h2>
+  <div className={styles.viewport}>
+    <ul className={styles.productsWrapper}>
+      {enrichedProducts
+        .filter(p => p.originalPrice && p.originalPrice > p.price)
+        .slice(0, 4)
+        .map((p) => (
+          <li key={p._id} className={styles.cardShell}>
+            {/* Re‑use the same card markup */}
+            <Link href={`/products/${p._id}`} className={styles.cardLink}>
+              <figure className={styles.cardHero}>
+                {[
+                  p.defaultImage?.url || "/placeholder.png",
+                  ...(p.additionalImages ?? [])
+                ].slice(0, 4).map((src, idx) => (
+                  <Image
+                    key={idx}
+                    src={src}
+                    alt={p.name}
+                    fill
+                    sizes="(max-width: 768px) 100vw, 280px"
+                    className={`${styles.cardHeroImg} ${idx > 0 ? styles.slideImg : ""}`}
+                    style={{ animationDelay: `${idx * 3}s` }}
+                  />
+                ))}
+                <div className={styles.topBar}>
+                  <button
+                    className={styles.wishlist}
+                    aria-label="Add to wishlist"
+                    onClick={(e) => e.preventDefault()}
+                  >
+                    <FontAwesomeIcon icon={faHeart} />
+                  </button>
+                  <span className={styles.badgeMain}>Sale</span>
+                </div>
+              </figure>
+              <div className={styles.body}>
+                <h3 className={styles.name}>{p.name}</h3>
+                <div className={styles.priceRow}>
+                  <span className={styles.current}>₹{p.price}</span>
+                  {p.originalPrice && (
+                    <>
+                      <span className={styles.original}>₹{p.originalPrice}</span>
+                      <span className={styles.save}>
+                        –{Math.round((1 - p.price / p.originalPrice) * 100)}%
+                      </span>
+                    </>
+                  )}
+                </div>
+              </div>
+            </Link>
+            <button
+              type="button"
+              className={styles.fab}
+              aria-label="Add to cart"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleAddToCart(p);
+              }}
+            >
+              <FontAwesomeIcon icon={faCartPlus} />
+            </button>
+          </li>
+        ))}
+    </ul>
+  </div>
+</section>
+
+
+
+
+
 
       {/* About Section */}
       <section id="about" className={styles.aboutUs}>
@@ -772,12 +1390,54 @@ export default function Home() {
       </section>
 
       {/* Footer */}
-      <footer className={styles.footer}>
-        <p>&copy; {new Date().getFullYear()} Rani Riwaaj. All rights reserved.</p>
-        <p>
-          <a href="#">Privacy Policy</a> | <a href="#">Terms &amp; Conditions</a>
-        </p>
-      </footer>
+<footer className={styles.footer}>
+  <div className={styles.footerContainer}>
+    {/* Brand */}
+    <div className={styles.footerBrand}>
+      <div className={styles.logo}>Rani Riwaaj</div>
+      <p className={styles.tagline}>
+        Celebrating the timeless craft of Phulkari through modern, wearable art.
+      </p>
+    </div>
+
+    {/* Quick Links */}
+    <div className={styles.footerLinks}>
+      <h4>Quick Links</h4>
+      <ul>
+        <li><Link href="/">Home</Link></li>
+        <li><Link href="#shop">Shop</Link></li>
+        <li><Link href="#about">About&nbsp;Us</Link></li>
+      </ul>
+    </div>
+
+    {/* Contact */}
+    <div className={styles.footerContact}>
+      <h4>Contact</h4>
+      <p><a href="mailto:hello@raniriwaaj.com">hello@raniriwaaj.com</a></p>
+      <p><a href="tel:+919510394742">+91&nbsp;95103&nbsp;94742</a></p>
+    </div>
+
+    {/* Social */}
+    <div className={styles.footerSocial}>
+      <h4>Follow&nbsp;Us</h4>
+      <div className={styles.socialIcons}>
+        <a href="https://instagram.com/raniriwaaj" aria-label="Instagram" target="_blank" rel="noopener">
+          <FontAwesomeIcon icon={faInstagram} />
+        </a>
+        <a href="https://facebook.com/raniriwaaj" aria-label="Facebook" target="_blank" rel="noopener">
+          <FontAwesomeIcon icon={faFacebookF} />
+        </a>
+        <a href="https://linkedin.com/company/raniriwaaj" aria-label="LinkedIn" target="_blank" rel="noopener">
+          <FontAwesomeIcon icon={faLinkedinIn} />
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div className={styles.copyRow}>
+    <p>&copy; {new Date().getFullYear()} Rani Riwaaj. All rights reserved.</p>
+  </div>
+</footer>
     </main>
   );
 }
