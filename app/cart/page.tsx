@@ -212,11 +212,17 @@ useEffect(() => {
 
   // Handler for WhatsApp enquiry
   const handleWhatsAppEnquiry = () => {
-    const message = encodeURIComponent(getWhatsAppMessage());
-    const phone = "+919041798129‬";
-    const url = `https://api.whatsapp.com/send?phone=${phone}&text=${message}`;
-    window.open(url, "_blank");
-  };
+  const message = encodeURIComponent(getWhatsAppMessage());
+
+  // ✅  Digits only: 91 (country code) + 9041798129
+  const phone = "919041798129";
+
+  // Either of these endpoints works; use whichever you prefer
+  const url = `https://wa.me/${phone}?text=${message}`;
+  // const url = `https://api.whatsapp.com/send?phone=${phone}&text=${message}`;
+
+  window.open(url, "_blank", "noopener,noreferrer");
+};
 
   // Additional user navigation
   const Header = () => {
