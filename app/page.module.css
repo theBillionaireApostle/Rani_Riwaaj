@@ -3373,3 +3373,54 @@
   .heroContent h1 { font-size: 1.6rem !important; }
   .heroContent p  { font-size: 0.9rem !important; }
 }
+
+
+
+
+
+/* === MOBILE GRID ONLY – 2025-07-28 === */
+
+/* 1. Single-column on very small screens (≤480 px) */
+@media (max-width: 480px) {
+  .featuredProducts .productsWrapper,
+  .productsWrapper,
+  .productList {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 1rem !important;
+    padding: 0 0.75rem !important;
+    overflow: visible !important;
+  }
+
+  .featuredProducts .productsWrapper > li,
+  .productsWrapper > li,
+  .productList > li,
+  .productItemLink,
+  .productItem {
+    width: 100% !important;
+    max-width: 100% !important;
+    flex: none !important;
+  }
+}
+
+/* 2. Two-column grid on phones & small tablets (481–767 px) */
+@media (min-width: 481px) and (max-width: 767px) {
+  .featuredProducts .productsWrapper,
+  .productsWrapper,
+  .productList {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 1rem !important;
+    padding: 0 0.75rem !important;
+    overflow: visible !important;
+  }
+
+  .featuredProducts .productsWrapper > li,
+  .productsWrapper > li,
+  .productList > li,
+  .productItemLink,
+  .productItem {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+}
