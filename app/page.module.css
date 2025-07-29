@@ -3424,3 +3424,155 @@
     max-width: 100% !important;
   }
 }
+/* ────────────────────────────────────────────────
+   QUICK VIEW STYLES • 2025‑07‑28
+──────────────────────────────────────────────── */
+
+.quickViewBtn {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  padding: 0.45rem 1.1rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #ffffff;
+  background-color: rgba(0, 0, 0, 0.78);
+  border: none;
+  border-radius: 4px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  z-index: 10;
+}
+
+.cardShell:hover .quickViewBtn {
+  opacity: 1;
+  transform: translate(-50%, -50%);
+  pointer-events: auto;
+}
+
+/* Blur card content when Quick View is active */
+.cardShell:hover .cardLink {
+  filter: blur(4px);
+  transition: filter 0.25s ease;
+}
+
+/* Backdrop behind modal */
+.quickViewBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  padding: 1.5rem;
+}
+
+/* Modal container */
+.quickViewModal {
+  position: relative;
+  width: 100%;
+  max-width: 420px;
+  max-height: calc(100vh - 3rem);
+  overflow-y: auto;
+  background: #ffffff;
+  padding: 1.5rem;
+  border-radius: 0.85rem;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
+  animation: fadeInModal 0.3s ease forwards;
+}
+
+@keyframes fadeInModal {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0);   }
+}
+
+/* Close (×) button */
+.quickViewClose {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  background: rgba(0, 0, 0, 0.05);
+  border: none;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  color: #444;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.quickViewClose:hover {
+  background: rgba(0, 0, 0, 0.1);
+  color: #000;
+}
+
+.quickViewModal h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0.9rem 0 0.35rem;
+}
+
+.modalPrice {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #007ea7;
+  margin-bottom: 1.25rem;
+}
+
+.addCartBtn {
+  display: inline-block;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: linear-gradient(135deg, #16a085 0%, #2ecc71 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.addCartBtn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+}
+.addCartBtn:active { transform: scale(0.96); }
+/* ── QUICK VIEW LOADER ───────────────────────── */
+
+/* Loader overlay inside the Quick View modal */
+.modalLoader {
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 15; /* sits above modal content but below the close button */
+}
+
+/* Spinner indicator */
+.modalLoader::before {
+  content: "";
+  width: 48px;
+  height: 48px;
+  border: 4px solid rgba(0, 0, 0, 0.1);
+  border-top-color: #007ea7;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+/* Spin keyframes */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
