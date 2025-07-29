@@ -140,6 +140,11 @@ export default function Home() {
   // State to track product loading
   const [productsLoading, setProductsLoading] = useState(true);
 
+  // --- QUICK VIEW ---
+  const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
+  const [quickViewLoading, setQuickViewLoading] = useState(true);
+  const closeQuickView = () => setQuickViewProduct(null);
+
 
   useEffect(() => {
     const el = scrollerRef.current;
@@ -854,6 +859,19 @@ export default function Home() {
       <ul className={styles.productsWrapper}>
         {visibleProducts.map((p) => (
           <li key={p._id} className={styles.cardShell}>
+            {/* QUICK VIEW BUTTON */}
+            <button
+              type="button"
+              className={styles.quickViewBtn}
+              aria-label="Quick view"
+              onClick={(e) => {
+                e.stopPropagation();
+                setQuickViewLoading(true);
+                setQuickViewProduct(p);
+              }}
+            >
+              Quick&nbsp;View
+            </button>
             <Link href={`/products/${p._id}`} className={styles.cardLink}>
               {/* ── IMAGE + TOP BAR ───────────────────────────── */}
               <figure className={styles.cardHero}>
@@ -969,6 +987,19 @@ export default function Home() {
     <ul className={styles.productsWrapper}>
       {enrichedProducts.slice(0, 4).map((p) => (
         <li key={p._id} className={styles.cardShell}>
+          {/* QUICK VIEW BUTTON */}
+          <button
+            type="button"
+            className={styles.quickViewBtn}
+            aria-label="Quick view"
+            onClick={(e) => {
+              e.stopPropagation();
+              setQuickViewLoading(true);
+              setQuickViewProduct(p);
+            }}
+          >
+            Quick&nbsp;View
+          </button>
           <Link href={`/products/${p._id}`} className={styles.cardLink}>
             {/* ── IMAGE + TOP BAR ───────────────────────────── */}
             <figure className={styles.cardHero}>
@@ -1070,6 +1101,19 @@ export default function Home() {
     <ul className={styles.productsWrapper}>
       {enrichedProducts.slice(4, 8).map((p) => (
         <li key={p._id} className={styles.cardShell}>
+          {/* QUICK VIEW BUTTON */}
+          <button
+            type="button"
+            className={styles.quickViewBtn}
+            aria-label="Quick view"
+            onClick={(e) => {
+              e.stopPropagation();
+              setQuickViewLoading(true);
+              setQuickViewProduct(p);
+            }}
+          >
+            Quick&nbsp;View
+          </button>
           <Link href={`/products/${p._id}`} className={styles.cardLink}>
             {/* ── IMAGE + TOP BAR ───────────────────────────── */}
             <figure className={styles.cardHero}>
@@ -1171,6 +1215,19 @@ export default function Home() {
     <ul className={styles.productsWrapper}>
       {newArrivalProducts.map((p) => (
         <li key={p._id} className={styles.cardShell}>
+          {/* QUICK VIEW BUTTON */}
+          <button
+            type="button"
+            className={styles.quickViewBtn}
+            aria-label="Quick view"
+            onClick={(e) => {
+              e.stopPropagation();
+              setQuickViewLoading(true);
+              setQuickViewProduct(p);
+            }}
+          >
+            Quick&nbsp;View
+          </button>
           <Link href={`/products/${p._id}`} className={styles.cardLink}>
             {/* — IMAGE + TOP BAR — */}
             <figure className={styles.cardHero}>
@@ -1244,6 +1301,19 @@ export default function Home() {
         .slice(0, 4)
         .map((p) => (
           <li key={p._id} className={styles.cardShell}>
+            {/* QUICK VIEW BUTTON */}
+            <button
+              type="button"
+              className={styles.quickViewBtn}
+              aria-label="Quick view"
+              onClick={(e) => {
+                e.stopPropagation();
+                setQuickViewLoading(true);
+                setQuickViewProduct(p);
+              }}
+            >
+              Quick&nbsp;View
+            </button>
             {/* Re‑use the same card markup */}
             <Link href={`/products/${p._id}`} className={styles.cardLink}>
               <figure className={styles.cardHero}>
@@ -1316,6 +1386,18 @@ export default function Home() {
         .slice(0, 4)
         .map((p) => (
           <li key={p._id} className={styles.cardShell}>
+            {/* QUICK VIEW BUTTON */}
+            <button
+              type="button"
+              className={styles.quickViewBtn}
+              aria-label="Quick view"
+              onClick={(e) => {
+                e.stopPropagation();
+                setQuickViewProduct(p);
+              }}
+            >
+              Quick&nbsp;View
+            </button>
             {/* Re‑use the same card markup */}
             <Link href={`/products/${p._id}`} className={styles.cardLink}>
               <figure className={styles.cardHero}>
@@ -1438,6 +1520,53 @@ export default function Home() {
     <p>&copy; {new Date().getFullYear()} Rani Riwaaj. All rights reserved.</p>
   </div>
 </footer>
+        {quickViewProduct && (
+          <div
+            className={styles.quickViewBackdrop}
+            onClick={closeQuickView}
+          >
+            <div
+              className={styles.quickViewModal}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                className={styles.quickViewClose}
+                onClick={closeQuickView}
+                aria-label="Close"
+              >
+                &times;
+              </button>
+
+              {quickViewLoading && (
+                <div className={styles.modalLoader} />
+              )}
+
+              <Image
+                src={
+                  quickViewProduct.defaultImage?.url || "/placeholder.png"
+                }
+                alt={quickViewProduct.name}
+                width={360}
+                height={360}
+                onLoadingComplete={() => setQuickViewLoading(false)}
+                style={{ width: "100%", height: "auto", borderRadius: 8 }}
+              />
+
+              <h3>{quickViewProduct.name}</h3>
+              <p className={styles.modalPrice}>₹{quickViewProduct.price}</p>
+
+              <button
+                className={styles.addCartBtn}
+                onClick={() => {
+                  handleAddToCart(quickViewProduct);
+                  closeQuickView();
+                }}
+              >
+                Add to Cart
+              </button>
+            </div>
+          </div>
+        )}
     </main>
   );
 }
