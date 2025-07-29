@@ -10,12 +10,11 @@ import { faEye, faEyeSlash } from "@fortawesome/free-solid-svg-icons";
 function Header() {
   return (
     <header style={headerStyles.container}>
-      <div style={headerStyles.logo}>Phulkari Bagh</div>
+      <Link href="/" style={headerStyles.logo}>
+        Rani&nbsp;Riwaaj
+      </Link>
       <nav style={headerStyles.navLinks}>
         <Link href="/" style={headerStyles.link}>Home</Link>
-        <Link href="/shop" style={headerStyles.link}>Shop</Link>
-        <Link href="/about" style={headerStyles.link}>About</Link>
-        <Link href="/contact" style={headerStyles.link}>Contact</Link>
       </nav>
     </header>
   );
@@ -25,12 +24,15 @@ function Header() {
 function Footer() {
   return (
     <footer style={footerStyles.container}>
-      <p style={footerStyles.text}>
-        &copy; {new Date().getFullYear()} Phulkari Bagh. All rights reserved.
-      </p>
-      <div style={footerStyles.links}>
-        <Link href="/privacy" style={footerStyles.link}>Privacy Policy</Link>
-        <Link href="/terms" style={footerStyles.link}>Terms &amp; Conditions</Link>
+      <div style={footerStyles.row}>
+        <p style={footerStyles.text}>
+          &copy; {new Date().getFullYear()} Rani&nbsp;Riwaaj. All rights reserved.
+        </p>
+        <div style={footerStyles.links}>
+          <Link href="/privacy" style={footerStyles.link}>Privacy&nbsp;Policy</Link>
+          <span style={footerStyles.divider}>|</span>
+          <Link href="/terms" style={footerStyles.link}>Terms&nbsp;&amp;&nbsp;Conditions</Link>
+        </div>
       </div>
     </footer>
   );
@@ -106,7 +108,6 @@ export default function AdminLoginPage() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       // credentials: "include", // Only needed if you rely on cookies
-credentials: "include",
       body: JSON.stringify({ username, password }),
     });
 
@@ -144,7 +145,7 @@ credentials: "include",
       <Header />
       <main style={styles.container}>
         <div style={styles.loginCard}>
-          <h1 style={styles.title}>Admin Login</h1>
+          <h1 style={styles.title}>Rani Riwaaj Admin</h1>
           {error && <p style={styles.errorText}>{error}</p>}
           <form onSubmit={handleSubmit} style={styles.form}>
             <div style={styles.fieldGroup}>
@@ -202,26 +203,28 @@ credentials: "include",
 // Inline styles using a style object.
 const styles: Record<string, React.CSSProperties> = {
   container: {
-    minHeight: "calc(100vh - 140px)", // full height minus header/footer heights
+    minHeight: "100vh",               // full viewport height
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    paddingTop: "70px", // reserve space for fixed header
-    paddingBottom: "70px", // reserve space for fixed footer
+    padding: "5rem 1rem 6rem",        // top ≈ header, bottom ≈ footer
     backgroundColor: "#f9fafb",
+    boxSizing: "border-box",
   },
   loginCard: {
-    backgroundColor: "#fff",
-    width: "100%",
-    maxWidth: "450px",
-    padding: "2rem",
-    borderRadius: "8px",
-    boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
+    background: "rgba(255, 255, 255, 0.85)",
+    backdropFilter: "blur(14px)",
+    WebkitBackdropFilter: "blur(14px)",
+    width: "min(90%, 460px)",
+    padding: "2.25rem 2rem",
+    borderRadius: "12px",
+    border: "1px solid rgba(255, 255, 255, 0.4)",
+    boxShadow: "0 8px 24px rgba(0, 0, 0, 0.12)",
     margin: "0 1rem",
   },
   title: {
     marginBottom: "1.5rem",
-    fontSize: "1.6rem",
+    fontSize: "1.8rem",
     textAlign: "center",
     fontWeight: 700,
   },
@@ -247,11 +250,12 @@ const styles: Record<string, React.CSSProperties> = {
   input: {
     padding: "0.6rem",
     paddingRight: "2.5rem", // provide space for the icon
-    borderRadius: "4px",
+    borderRadius: "8px",
     border: "1px solid #ccc",
     fontSize: "1rem",
     width: "100%",
     boxSizing: "border-box",
+    boxShadow: "inset 0 1px 2px rgba(0,0,0,0.06)",
   },
   inputWrapper: {
     position: "relative",
@@ -271,46 +275,55 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: "center",
   },
   button: {
-    padding: "0.8rem 1.5rem",
-    borderRadius: "4px",
+    padding: "0.9rem 1.75rem",
+    borderRadius: "8px",
     fontSize: "1rem",
     fontWeight: 600,
     border: "none",
-    backgroundColor: "#1d4ed8",
+    background: "linear-gradient(90deg, #cc444b, #da5552 50%, #e39695)",
     color: "#fff",
-    transition: "background-color 0.2s",
+    transition: "transform 0.15s ease, opacity 0.25s ease",
+  },
+  buttonHover: {
+    transform: "translateY(-2px)",
   },
 };
 
 const headerStyles: Record<string, React.CSSProperties> = {
   container: {
-    backgroundColor: "#1d4ed8",
-    color: "#fff",
-    height: "70px",
+    background: "rgba(255, 255, 255, 0.95)",
+    backdropFilter: "blur(10px)",
+    WebkitBackdropFilter: "blur(10px)",
+    borderBottom: "2px solid",
+    borderImage: "linear-gradient(90deg,#cc444b,#da5552 50%,#e39695) 1",
+    color: "#222",
+    height: "60px",
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: "0 1.5rem",
+    padding: "0 clamp(1rem, 4vw, 2rem)",
     position: "fixed",
     top: 0,
     left: 0,
     width: "100%",
     zIndex: 2000,
-    flexWrap: "wrap",
-  },
-  logo: {
-    fontSize: "1.8rem",
-    fontWeight: "bold",
-    marginBottom: "0.5rem",
   },
   navLinks: {
     display: "flex",
-    gap: "1.5rem",
-    flexWrap: "wrap",
-    justifyContent: "center",
+    gap: "clamp(0.75rem, 3vw, 2rem)",
+  },
+  logo: {
+    fontSize: "clamp(1.5rem, 4vw, 2rem)",
+    fontWeight: 800,
+    textDecoration: "none",
+    background: "linear-gradient(90deg,#cc444b,#da5552 50%,#e39695)",
+    WebkitBackgroundClip: "text",
+    color: "transparent",
+    whiteSpace: "nowrap",
+    transition: "opacity 0.25s",
   },
   link: {
-    color: "#fff",
+    color: "#333",
     fontSize: "1rem",
     textDecoration: "none",
     transition: "color 0.3s",
@@ -319,33 +332,39 @@ const headerStyles: Record<string, React.CSSProperties> = {
 
 const footerStyles: Record<string, React.CSSProperties> = {
   container: {
-    backgroundColor: "#005bb5",
+    background: "#1a1a1d",
+    borderTop: "3px solid",
+    borderImage: "linear-gradient(90deg,#cc444b,#da5552 50%,#e39695) 1",
     color: "#fff",
-    textAlign: "center",
-    padding: "1rem",
-    position: "fixed",
-    bottom: 0,
-    left: 0,
-    width: "100%",
-    height: "70px",
+    padding: "1rem clamp(1rem, 4vw, 2rem)",
+  },
+  row: {
     display: "flex",
     flexDirection: "column",
-    justifyContent: "center",
+    alignItems: "center",
+    gap: "0.5rem",
   },
   text: {
     margin: 0,
-    fontSize: "0.9rem",
+    fontSize: "0.95rem",
+    textAlign: "center",
   },
   links: {
-    marginTop: "0.5rem",
     display: "flex",
-    justifyContent: "center",
     gap: "1rem",
+    flexWrap: "wrap",
+    justifyContent: "center",
   },
   link: {
-    color: "#fff",
-    textDecoration: "underline",
+    color: "#e39695",
+    textDecoration: "none",
+    fontSize: "0.95rem",
     transition: "color 0.3s",
+    fontWeight: 500,
+  },
+  divider: {
+    color: "#555",
+    fontSize: "0.9rem",
   },
 };
 
