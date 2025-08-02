@@ -1,107 +1,141 @@
-/* components/layout/SiteHeader.tsx
-   -------------------------------- */
-   "use client";
+"use client";
 
-   import Link from "next/link";
-   import Image from "next/image";
-   import { usePathname, useRouter } from "next/navigation";
-   import { useEffect, useState } from "react";
-   import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-   import { faShoppingCart } from "@fortawesome/free-solid-svg-icons";
-   import { auth } from "../../app/firebaseClient";  
-    import { onAuthStateChanged, signOut, User } from "firebase/auth";
-   import styles from "./SiteHeader.module.css";
-   
-   export default function SiteHeader() {
-     const [user, setUser] = useState<User | null>(null);
-     const [authReady, setAuthReady] = useState(false);
-     const [count, setCount] = useState(0);
-     const router = useRouter();
-     const pathname = usePathname();              // highlight active nav links (opt.)
-   
-     /* auth */
-     useEffect(
-       () =>
-         onAuthStateChanged(auth, (u) => {
-           setUser(u);
-           setAuthReady(true);
-         }),
-       []
-     );
-   
-     /* cart-counter — re-fetch whenever user changes */
-     useEffect(() => {
-       if (!user) return;
-   
-       (async () => {
-         const res = await fetch(
-           `${process.env.NEXT_PUBLIC_API_URL}/api/cart?userId=${user.uid}`
-         );
-         if (res.ok) {
-           const json = await res.json();
-           setCount(
-             (json.items as { quantity: number }[]).reduce(
-               (acc, i) => acc + i.quantity,
-               0
-             )
-           );
-         }
-       })();
-     }, [user]);
-   
-     return (
-       <nav className={styles.nav}>
-         <Link href="/" className={styles.logo}>
-         Rani&nbsp;Riwaaj
-         </Link>
-   
-         {/* right-part */}
-         <div className={styles.right}>
-           {!authReady ? (
-             <div className={styles.loader} />
-           ) : user ? (
-             <>
-               <Link href="/cart" className={styles.cartLink}>
-                 <FontAwesomeIcon icon={faShoppingCart} />
-                 {count > 0 && <span className={styles.badge}>{count}</span>}
-               </Link>
-               <UserDropdown user={user} onLogout={() => signOut(auth)} />
-             </>
-           ) : (
-             <Link href="/signin" className={styles.signinBtn}>
-               Sign&nbsp;In&nbsp;/&nbsp;Sign&nbsp;Up
-             </Link>
-           )}
-         </div>
-       </nav>
-     );
-   }
-   
-   /* -------------------- */
-   function UserDropdown({
-     user,
-     onLogout,
-   }: {
-     user: User;
-     onLogout: () => void;
-   }) {
-     const [open, setOpen] = useState(false);
-   
-     const initials =
-       user.displayName?.split(" ").map((n) => n[0])?.join("")?.toUpperCase() ??
-       user.email?.[0].toUpperCase() ??
-       "U";
-   
-     return (
-       <div className={styles.dropdown}>
-         <button className={styles.avatar} onClick={() => setOpen(!open)}>
-           {initials}
-         </button>
-         {open && (
-           <div className={styles.menu}>
-             <button onClick={onLogout}>Logout</button>
-           </div>
-         )}
-       </div>
-     );
-   }
+import Image from "next/image";
+import Link from "next/link";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { onAuthStateChanged, User, signOut } from "firebase/auth";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  faShoppingCart,
+  faChevronDown,
+} from "@fortawesome/free-solid-svg-icons";
+import { faWhatsapp } from "@fortawesome/free-brands-svg-icons";
+
+import { auth } from "@/app/firebaseClient";          // ← adjust if auth is elsewhere
+import styles from "./SiteHeader.module.css";
+
+type Props = {
+  /* allow the page to pass cartCount if you fetch it there */
+  initialCartCount?: number;
+};
+
+export default function Header({ initialCartCount = 0 }: Props) {
+  const router = useRouter();
+
+  /* ───────── AUTH & CART STATE ───────── */
+  const [user, setUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [cartCount, setCartCount] = useState(initialCartCount);
+
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (u) => {
+      setUser(u);
+      setAuthLoading(false);
+    });
+    return () => unsub();
+  }, []);
+
+  /* Optional: re-fetch cart when user changes */
+  useEffect(() => {
+    async function fetchCart() {
+      if (!user) return;
+      const res = await fetch(
+        `https://rani-riwaaj-backend-ylbq.vercel.app/api/cart?userId=${user.uid}`
+      );
+      if (res.ok) {
+        const data = await res.json();
+        const total = (data.items ?? []).reduce(
+          (acc: number, it: any) => acc + it.quantity,
+          0
+        );
+        setCartCount(total);
+      }
+    }
+    fetchCart();
+  }, [user]);
+
+  return (
+    <nav className={styles.nav}>
+      {/* LEFT — Logo */}
+      <Link href="/" className={styles.logo}>
+        Rani&nbsp;Riwaaj
+      </Link>
+
+      {/* RIGHT */}
+      <div className={styles.rightSection}>
+        {authLoading ? (
+          <div className={styles.loader} />
+        ) : user ? (
+          <>
+            {/* CART */}
+            <Link href="/cart" className={styles.cartLink}>
+              <FontAwesomeIcon icon={faShoppingCart} />
+              {cartCount > 0 && (
+                <span className={styles.badge}>{cartCount}</span>
+              )}
+            </Link>
+
+            {/* USER DROPDOWN */}
+            <UserDropdown user={user} onLogout={() => signOut(auth)} />
+          </>
+        ) : (
+          <Link href="/signin" className={styles.authLink}>
+            Sign In&nbsp;/&nbsp;Sign Up
+          </Link>
+        )}
+
+        {/* WHATSAPP CTA */}
+        <a
+          href="https://api.whatsapp.com/send?phone=+919510394742&text=Hi%20I%20have%20an%20enquiry"
+          className={styles.enquireBtn}
+          target="_blank"
+          rel="noopener"
+        >
+          <FontAwesomeIcon icon={faWhatsapp} />
+          <span>Enquire&nbsp;Now</span>
+        </a>
+      </div>
+    </nav>
+  );
+}
+
+/* ──────────────── UserDropdown ──────────────── */
+function UserDropdown({
+  user,
+  onLogout,
+}: {
+  user: User;
+  onLogout: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+
+  const initials = user.displayName
+    ? user.displayName
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+        .toUpperCase()
+    : user.email?.[0].toUpperCase() ?? "";
+
+  return (
+    <div className={styles.userDropdown}>
+      <button
+        type="button"
+        className={styles.userAvatar}
+        onClick={() => setOpen((p) => !p)}
+      >
+        {initials}
+        <FontAwesomeIcon icon={faChevronDown} className={styles.chev} />
+      </button>
+
+      {open && (
+        <div className={styles.dropdownMenu}>
+          <button className={styles.dropdownItem} onClick={onLogout}>
+            Logout
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
