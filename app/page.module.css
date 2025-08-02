@@ -3576,3 +3576,12 @@
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+
+
+
+
+/* 1. Stop blurring the product card when Quick-View is active */
+.cardShell:hover .cardLink {
+  filter: none !important;        /* kill the 4 px blur */
+  opacity: 1 !important;          /* keep the card clear */
+}
