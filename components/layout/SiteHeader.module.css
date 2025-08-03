@@ -1,6 +1,14 @@
-/* -----------------------------
-   HEADER / NAV
------------------------------- */
+/* =====================================================
+   SITE HEADER (responsive, elegant, professional)
+   -----------------------------------------------------
+   Break-points:
+     •  Desktop / Large ≥1025px (base)
+     •  Tablet ≤1024px
+     •  Small Tablet / Large Phone ≤768px
+     •  Phone / Tiny ≤480px
+===================================================== */
+
+/* ---------- Base (Large desktop) ---------- */
 .nav {
   position: fixed;
   inset: 0 0 auto 0;
@@ -10,46 +18,44 @@
   align-items: center;
   max-width: 1440px;
   margin-inline: auto;
-  padding: 0.55rem clamp(1rem, 4vw, 2rem);
-  background: #fff;
+  padding: 0.55rem clamp(1.25rem, 3vw, 2.5rem);
+  background: #ffffff;
   border-bottom: 1px solid rgba(0, 0, 0, 0.05);
   transition: background 0.3s ease, box-shadow 0.3s ease;
 }
 
-/* —— Logo —— */
+/* --- Logo --- */
 .logo {
   font-family: "Poppins", sans-serif;
-  font-size: clamp(1.25rem, 4vw, 1.75rem);
+  font-size: clamp(1.35rem, 2vw + 0.4rem, 1.85rem);
   font-weight: 800;
   letter-spacing: 2px;
-  background: linear-gradient(90deg, #ff512f, #dd2476 50%, #ff512f);
+  background: linear-gradient(90deg, #ff512f 0%, #dd2476 50%, #ff512f 100%);
   background-size: 200% auto;
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
   cursor: pointer;
-  transition: background-position 0.6s, transform 0.3s;
+  transition: background-position 0.6s ease, transform 0.3s ease;
 }
-
 .logo:hover {
   background-position: 100% center;
-  transform: scale(1.05);
+  transform: scale(1.06);
 }
 
-/* —— Right cluster —— */
+/* --- Right cluster --- */
 .rightSection {
   display: flex;
   align-items: center;
-  gap: clamp(0.75rem, 2vw, 1.25rem);
+  gap: clamp(0.8rem, 2vw, 1.6rem);
 }
 
-/* Cart link */
+/* Cart icon */
 .cartLink {
   position: relative;
-  font-size: 1.4rem;
+  font-size: 1.5rem;
   color: #333;
 }
-
 .badge {
   position: absolute;
   top: -6px;
@@ -65,11 +71,12 @@
   justify-content: center;
 }
 
-/* Auth link (when not signed in) */
+/* Auth link */
 .authLink {
   font-size: 0.95rem;
   color: #333;
   text-decoration: none;
+  white-space: nowrap;
 }
 
 /* WhatsApp CTA */
@@ -77,40 +84,33 @@
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  padding: 0.45rem 0.9rem;
-  font-size: 0.9rem;
-  font-weight: 600;
+  padding: 0.5rem 1rem;
+  font: 600 0.9rem/1 "Poppins", sans-serif;
   background: #25d366;
   color: #fff;
   border-radius: 4px;
-  transition: background 0.3s;
+  transition: background 0.25s;
 }
 .enquireBtn:hover {
   background: #1dac54;
 }
 
-/* —— User dropdown —— */
-.userDropdown {
-  position: relative;
-}
+/* User dropdown */
+.userDropdown { position: relative; }
 
 .userAvatar {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.25rem;
   width: 40px;
   height: 40px;
   background: #4285f4;
   color: #fff;
   border-radius: 50%;
-  font-size: 0.95rem;
-  font-weight: 700;
+  font: 700 0.95rem/1 "Poppins", sans-serif;
+  cursor: pointer;
 }
-
-.chev {
-  font-size: 0.6rem;
-}
+.chev { font-size: 0.6rem; }
 
 .dropdownMenu {
   position: absolute;
@@ -119,68 +119,94 @@
   background: #fff;
   border: 1px solid #eee;
   border-radius: 4px;
-  min-width: 140px;
+  min-width: 150px;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
   opacity: 0;
   visibility: hidden;
   transform: translateY(6px);
-  transition: opacity 0.2s, transform 0.2s, visibility 0.2s;
+  transition: opacity 0.2s, transform 0.2s;
 }
-
 .userDropdown:hover .dropdownMenu {
   opacity: 1;
   visibility: visible;
   transform: translateY(0);
 }
-
 .dropdownItem {
-  display: block;
-  width: 100%;
-  padding: 0.55rem 0.9rem;
+  padding: 0.55rem 1rem;
   font-size: 0.9rem;
+  width: 100%;
   text-align: left;
   background: transparent;
   border: none;
   cursor: pointer;
   transition: background 0.2s;
 }
+.dropdownItem:hover { background: #f7f7f7; }
 
-.dropdownItem:hover {
-  background: #f7f7f7;
-}
-
-/* Loader (auth-state placeholder) */
+/* Loader */
 .loader,
 .loader::after {
   border-radius: 50%;
   width: 18px;
   height: 18px;
   border: 3px solid #ccc;
-  border-top-color: #4285f4;
-  animation: spinner 0.75s linear infinite;
-}
-.loader {
   border-right-color: transparent;
   border-bottom-color: transparent;
+  border-top-color: #4285f4;
+  animation: spinner 0.8s linear infinite;
+}
+@keyframes spinner { to { transform: rotate(1turn); } }
+
+/* =====================================================
+   Break-point: ≤1024px  (Tablets & small laptops)
+===================================================== */
+@media (max-width: 1024px) {
+  .nav          { padding-inline: clamp(1rem, 4vw, 1.75rem); }
+  .rightSection { gap: 1rem; }
+  .logo         { font-size: clamp(1.2rem, 4vw, 1.55rem); }
+
+  /* shrink avatar & cart */
+  .userAvatar   { width: 38px; height: 38px; font-size: 0.9rem; }
+  .cartLink     { font-size: 1.35rem; }
+
+  /* WhatsApp btn keeps text but smaller padding */
+  .enquireBtn   { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
 }
 
-@keyframes spinner {
-  to {
-    transform: rotate(1turn);
-  }
+/* =====================================================
+   Break-point: ≤768px  (Large phones / small tablets)
+===================================================== */
+@media (max-width: 768px) {
+  .nav          { padding-inline: clamp(0.75rem, 6vw, 1.25rem); }
+  .rightSection { gap: 0.75rem; }
+
+  .logo         { font-size: clamp(1.1rem, 5vw, 1.4rem); }
+
+  /* WhatsApp CTA becomes icon-only to save space */
+  .enquireBtn   { padding: 0.5rem; font-size: 0; } /* hide text */
+  .enquireBtn svg { font-size: 1.15rem; }
+
+  /* Cart icon stays, but shrink */
+  .cartLink     { font-size: 1.25rem; }
+
+  /* Auth link smaller font to fit */
+  .authLink     { font-size: 0.85rem; }
 }
 
-/* —— Responsiveness —— */
+/* =====================================================
+   Break-point: ≤480px  (Phones)
+===================================================== */
 @media (max-width: 480px) {
-  .logo {
-    font-size: 1.3rem;
-  }
-  .userAvatar {
-    width: 36px;
-    height: 36px;
-  }
-  .enquireBtn {
-    font-size: 0.8rem;
-    padding: 0.35rem 0.7rem;
-  }
+  .nav { padding-block: 0.4rem; }
+  .logo { font-size: 1.2rem; letter-spacing: 1.4px; }
+
+  /* Minimal avatar & icons */
+  .userAvatar { width: 34px; height: 34px; font-size: 0.8rem; }
+  .cartLink   { font-size: 1.15rem; }
+
+  /* Slightly narrower gaps */
+  .rightSection { gap: 0.6rem; }
+
+  /* Auth link stays but even smaller font */
+  .authLink { font-size: 0.8rem; }
 }
