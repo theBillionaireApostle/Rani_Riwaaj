@@ -33,6 +33,37 @@
   --font-family-main: 'Poppins', sans-serif;
   --border-radius: 10px;
   --sidebar-width: 220px;
+
+    --container: 1200px;
+  --header-height: 64px;
+
+  /* Palette */
+  --bg: #ffffff;
+  --ink: #0b0f14;
+  --muted: #657085;
+  --blue: #0b57d0;     /* primary */
+  --blue-2: #0841a1;   /* hover/depth */
+  --line: #e8edf6;     /* cool divider */
+  --surface: #f7faff;  /* light blue surface */
+  --wash: #f9fbff;
+
+  /* Accents */
+  --accent: #dce6ff;
+  --success: #22c55e;
+  --danger: #ef4444;
+  --wa: #25D366;       /* WhatsApp */
+
+  /* Radii & Shadows */
+  --r-1: 10px; --r-2: 14px; --r-3: 18px; --r-4: 20px;
+  --sh-1: 0 6px 18px rgba(11,15,20,.06);
+  --sh-2: 0 14px 34px rgba(11,15,20,.10);
+
+  /* Type */
+  --h1: clamp(32px, 6vw, 48px);
+  --h2: clamp(22px, 3.2vw, 28px);
+  --h3: clamp(18px, 2.6vw, 20px);
+  --p:  16px;
+  --display: "Playfair Display", "Cormorant Garamond", Georgia, serif;
 }
 
 
