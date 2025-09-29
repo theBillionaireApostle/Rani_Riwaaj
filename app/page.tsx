@@ -7,18 +7,145 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation"; // for redirection
 // Import FontAwesome icons
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faShoppingCart, faHeart, faThLarge, faChevronLeft, faChevronRight, faFilter } from "@fortawesome/free-solid-svg-icons";
+import { faShoppingCart, faHeart, faThLarge, faChevronLeft, faChevronRight, faChevronDown, faFilter } from "@fortawesome/free-solid-svg-icons";
 import { faWhatsapp,faInstagram, faFacebookF, faLinkedinIn } from "@fortawesome/free-brands-svg-icons";
 import { faCartPlus } from "@fortawesome/free-solid-svg-icons";
 import {
   
   faStar as faStarSolid,
 } from "@fortawesome/free-solid-svg-icons";
+
+import SiteHeader from "@/components/layout/SiteHeader";
+import SiteFooter from "@/components/layout/SiteFooter";
 // Import Firebase auth functions and the auth object
 import { onAuthStateChanged, User, signOut } from "firebase/auth";
 import { auth } from "./firebaseClient";
 import styles from "./page.module.css";
 import { toast } from "react-toastify";
+
+// ---------- Custom Select (prevents shrink, animated, accessible) ----------
+type Option = { value: string; label: string };
+
+function CustomSelect({
+  value,
+  onChange,
+  options,
+  placeholder = "Select an option",
+  fullWidth = false,
+  ariaLabel,
+}: {
+  value: string;
+  onChange: (val: string) => void;
+  options: Option[];
+  placeholder?: string;
+  fullWidth?: boolean;
+  ariaLabel?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(() =>
+    Math.max(0, options.findIndex((o) => o.value === value))
+  );
+  const wrapRef = useRef<HTMLDivElement>(null);
+
+  // Close on outside click
+  useEffect(() => {
+    function onDoc(e: MouseEvent) {
+      if (!wrapRef.current) return;
+      if (!wrapRef.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, []);
+
+  // Keep activeIndex in sync with value changes
+  useEffect(() => {
+    setActiveIndex(Math.max(0, options.findIndex((o) => o.value === value)));
+  }, [value, options]);
+
+  const selected = options.find((o) => o.value === value);
+
+  const onKeyDown: React.KeyboardEventHandler<HTMLButtonElement> = (e) => {
+    if (!open && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
+      setOpen(true);
+      e.preventDefault();
+      return;
+    }
+    if (!open) return;
+    if (e.key === "ArrowDown") {
+      setActiveIndex((i) => Math.min(options.length - 1, i + 1));
+      e.preventDefault();
+    } else if (e.key === "ArrowUp") {
+      setActiveIndex((i) => Math.max(0, i - 1));
+      e.preventDefault();
+    } else if (e.key === "Enter") {
+      const opt = options[activeIndex];
+      if (opt) onChange(opt.value);
+      setOpen(false);
+      e.preventDefault();
+    } else if (e.key === "Escape") {
+      setOpen(false);
+      e.preventDefault();
+    }
+  };
+
+  return (
+    <div
+      ref={wrapRef}
+      className={`${styles.select} ${fullWidth ? styles.selectFull : ""}`}
+    >
+      <button
+        type="button"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-label={ariaLabel}
+        className={styles.selectButton}
+        onClick={() => setOpen((v) => !v)}
+        onKeyDown={onKeyDown}
+      >
+        <span className={styles.selectValue}>
+          {selected?.label ?? placeholder}
+        </span>
+        <FontAwesomeIcon icon={faChevronDown} className={styles.selectIcon} />
+      </button>
+
+      <AnimatePresence>
+        {open && (
+          <motion.ul
+            className={styles.selectMenu}
+            role="listbox"
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 4 }}
+            transition={{ duration: 0.18, ease: "easeOut" }}
+          >
+            {options.map((opt, i) => {
+              const isSelected = opt.value === value;
+              return (
+                <li key={opt.value}>
+                  <button
+                    type="button"
+                    role="option"
+                    aria-selected={isSelected}
+                    className={`${styles.selectOption} ${
+                      i === activeIndex ? styles.selectOptionActive : ""
+                    } ${isSelected ? styles.selectOptionSelected : ""}`}
+                    onMouseEnter={() => setActiveIndex(i)}
+                    onClick={() => {
+                      onChange(opt.value);
+                      setOpen(false);
+                    }}
+                  >
+                    <span>{opt.label}</span>
+                  </button>
+                </li>
+              );
+            })}
+          </motion.ul>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
 
 // break an array into sub-arrays of length `size`
 function chunk<T>(arr: T[], size: number): T[][] {
@@ -81,6 +208,19 @@ interface Props {
 
 
 export default function Home() {
+  // Responsive: mobile breakpoint (<= 640px)
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth <= 640);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+  // Helper to smoothly scroll to products section
+  const scrollToProducts = () => {
+    const el = document.getElementById("shop");
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
   const router = useRouter();
   // ── HERO CAROUSEL ─────────────────────────────────
   const heroImages = [
@@ -127,6 +267,12 @@ export default function Home() {
   | "price-asc"
   | "price-desc"
 >("date-desc"); 
+  const sortOptionsData: Option[] = [
+    { value: "date-desc", label: "Date Added: Newest First" },
+    { value: "date-asc",  label: "Date Added: Oldest First" },
+    { value: "price-asc", label: "Price: Low to High" },
+    { value: "price-desc",label: "Price: High to Low" },
+  ];
   // Visible count for lazy loading
   const [visibleCount, setVisibleCount] = useState(10);
   // sidebar visibility for Filter drawer
@@ -494,8 +640,8 @@ export default function Home() {
   };
 
 
-  const categoryOptions = useMemo(() => {
-    return ["All", ...categories.map((c) => c.name)];
+  const categorySelectOptions = useMemo<Option[]>(() => {
+    return [{ value: "", label: "All" }, ...categories.map((c) => ({ value: c.name, label: c.name }))];
   }, [categories]);
 
 
@@ -524,48 +670,28 @@ export default function Home() {
     ? ensureMin(justInProducts, 4)
     : enrichedProducts.slice(0, 4);
 
+  // — Section data helpers (4 on desktop, all on mobile) —
+  const featuredItems = isMobile ? visibleProducts : visibleProducts.slice(0, 4);
+
+  const topPicksBase = enrichedProducts; // could be a curated subset
+  const topPicksItems = isMobile ? topPicksBase : topPicksBase.slice(0, 4);
+
+  const recommendedBase = enrichedProducts.slice(4); // anything beyond first few
+  const recommendedItems = isMobile ? recommendedBase : recommendedBase.slice(0, 4);
+
+  const newArrivalBase = newArrivalProducts; // just-in or fallback
+  const newArrivalItems = isMobile ? newArrivalBase : newArrivalBase.slice(0, 4);
+
+  const bestSellersBase = [...enrichedProducts].sort((a, b) => (b.reviews ?? 0) - (a.reviews ?? 0));
+  const bestSellersItems = isMobile ? bestSellersBase : bestSellersBase.slice(0, 4);
+
+  const onSaleBase = enrichedProducts.filter(p => p.originalPrice && p.originalPrice > p.price);
+  const onSaleItems = isMobile ? onSaleBase : onSaleBase.slice(0, 4);
+
   return (
     <main className={styles.main}>
       {/* Header with flex layout */}
-      <nav className={styles.nav}>
-        <div className={styles.leftSection}>
-          <div className={styles.logo}>Rani Riwaaj</div>
-        </div>
-        <div className={styles.rightSection}>
-          {authLoading ? (
-            <div className={styles.loader}></div>
-          ) : user ? (
-            <>
-              <Link href="/cart" className={styles.cartLink}>
-                <FontAwesomeIcon icon={faShoppingCart} />
-                {cartCount > 0 && (
-                  <span className={styles.badge}>{cartCount}</span>
-                )}
-              </Link>
-              <UserDropdown
-                user={user}
-                cartCount={cartCount}
-                onLogout={() => signOut(auth)}
-              />
-            </>
-          ) : (
-            <div className={styles.authContainer}>
-              <Link href="/signin" className={styles.authLink}>
-                Sign In / Sign Up
-              </Link>
-            </div>
-          )}
-          <a
-            href="https://api.whatsapp.com/send?phone=+919510394742&text=Hi%20I%20have%20an%20enquiry"
-            className={styles.enquireBtn}
-            target="_blank"
-            rel="noopener"
-          >
-            <FontAwesomeIcon icon={faWhatsapp} />
-            <span>Enquire&nbsp;Now</span>
-          </a>
-        </div>
-      </nav>
+      <SiteHeader />
 
       {/* ─────────── HERO – sliding carousel ─────────── */}
       <section id="hero" className={styles.hero}>
@@ -601,11 +727,28 @@ export default function Home() {
           exit={{ opacity: 0, y: -25 }}
           transition={{ duration: 0.6, ease: "easeOut" }}
         >
-          <h1>Experience Phulkari</h1>
-          <p>
+          <h1 className={styles.revealUp}>Experience Phulkari</h1>
+          <p className={styles.revealUpDelay}>
             Embrace the vibrant colors, intricate designs, and cultural richness
             of traditional Phulkari craftsmanship.
           </p>
+          <div className={`${styles.heroActions} ${styles.revealUpDelay}`}>
+            <button
+              type="button"
+              onClick={scrollToProducts}
+              className={`${styles.heroBtn} ${styles.heroBtnPrimary}`}
+              aria-label="View our products"
+            >
+              View Products
+            </button>
+            <Link
+              href="/about"
+              className={`${styles.heroBtn} ${styles.heroBtnGhost}`}
+              aria-label="Learn more about RaniRiwaaj and Phulkari"
+            >
+              Learn More
+            </Link>
+          </div>
         </motion.div>
 
         {/* — DOTS — */}
@@ -646,17 +789,12 @@ export default function Home() {
           </span>
 
           {/* Right – sort dropdown */}
-          <select
+          <CustomSelect
             value={sortOption}
-            onChange={(e) => setSortOption(e.target.value as typeof sortOption)}
-            className={styles.selectInput}
-          >
-            <option value="date-desc">Relevance</option>
-            <option value="date-desc">Date Added: Newest First</option>
-            <option value="date-asc">Date Added: Oldest First</option>
-            <option value="price-asc">Price: Low to High</option>
-            <option value="price-desc">Price: High to Low</option>
-          </select>
+            onChange={(val) => setSortOption(val as typeof sortOption)}
+            options={sortOptionsData}
+            ariaLabel="Sort products"
+          />
         </section>
       )}
 
@@ -681,17 +819,13 @@ export default function Home() {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Sort By
               </label>
-              <select
+              <CustomSelect
                 value={sortOption}
-                onChange={(e) => setSortOption(e.target.value as typeof sortOption)}
-                className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="date-desc">Relevance</option>
-                <option value="date-desc">Date Added: Newest First</option>
-                <option value="date-asc">Date Added: Oldest First</option>
-                <option value="price-asc">Price: Low to High</option>
-                <option value="price-desc">Price: High to Low</option>
-              </select>
+                onChange={(val) => setSortOption(val as typeof sortOption)}
+                options={sortOptionsData}
+                fullWidth
+                ariaLabel="Filter: Sort By"
+              />
             </div>
 
             {/* Price Range Control */}
@@ -715,18 +849,13 @@ export default function Home() {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Category
               </label>
-              <select
+              <CustomSelect
                 value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">All</option>
-                {categories.map((c: Category) => (
-                  <option key={c._id} value={c.name}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
+                onChange={(val) => setCategory(val)}
+                options={categorySelectOptions}
+                fullWidth
+                ariaLabel="Filter: Category"
+              />
             </div>
 
             {/* Availability Control */}
@@ -857,7 +986,7 @@ export default function Home() {
   ) : (
     <div className={styles.viewport} ref={viewportRef}>
       <ul className={styles.productsWrapper}>
-        {visibleProducts.map((p) => (
+        {featuredItems.map((p) => (
           <li key={p._id} className={styles.cardShell}>
             {/* QUICK VIEW BUTTON */}
             <button
@@ -985,7 +1114,7 @@ export default function Home() {
   <h2 className={styles.sectionTitle}>Top Picks</h2>
   <div className={styles.viewport}>
     <ul className={styles.productsWrapper}>
-      {enrichedProducts.slice(0, 4).map((p) => (
+      {topPicksItems.map((p) => (
         <li key={p._id} className={styles.cardShell}>
           {/* QUICK VIEW BUTTON */}
           <button
@@ -1099,7 +1228,7 @@ export default function Home() {
   <h2 className={styles.sectionTitle}>Recommended for You</h2>
   <div className={styles.viewport}>
     <ul className={styles.productsWrapper}>
-      {enrichedProducts.slice(4, 8).map((p) => (
+      {recommendedItems.map((p) => (
         <li key={p._id} className={styles.cardShell}>
           {/* QUICK VIEW BUTTON */}
           <button
@@ -1213,7 +1342,7 @@ export default function Home() {
   <h2 className={styles.sectionTitle}>New Arrivals</h2>
   <div className={styles.viewport}>
     <ul className={styles.productsWrapper}>
-      {newArrivalProducts.map((p) => (
+      {newArrivalItems.map((p) => (
         <li key={p._id} className={styles.cardShell}>
           {/* QUICK VIEW BUTTON */}
           <button
@@ -1296,10 +1425,7 @@ export default function Home() {
   <h2 className={styles.sectionTitle}>Best Sellers</h2>
   <div className={styles.viewport}>
     <ul className={styles.productsWrapper}>
-      {enrichedProducts
-        .sort((a, b) => (b.reviews ?? 0) - (a.reviews ?? 0))
-        .slice(0, 4)
-        .map((p) => (
+      {bestSellersItems.map((p) => (
           <li key={p._id} className={styles.cardShell}>
             {/* QUICK VIEW BUTTON */}
             <button
@@ -1381,10 +1507,7 @@ export default function Home() {
   <h2 className={styles.sectionTitle}>On Sale</h2>
   <div className={styles.viewport}>
     <ul className={styles.productsWrapper}>
-      {enrichedProducts
-        .filter(p => p.originalPrice && p.originalPrice > p.price)
-        .slice(0, 4)
-        .map((p) => (
+      {onSaleItems.map((p) => (
           <li key={p._id} className={styles.cardShell}>
             {/* QUICK VIEW BUTTON */}
             <button
@@ -1472,54 +1595,7 @@ export default function Home() {
       </section>
 
       {/* Footer */}
-<footer className={styles.footer}>
-  <div className={styles.footerContainer}>
-    {/* Brand */}
-    <div className={styles.footerBrand}>
-      <div className={styles.logo}>Rani Riwaaj</div>
-      <p className={styles.tagline}>
-        Celebrating the timeless craft of Phulkari through modern, wearable art.
-      </p>
-    </div>
-
-    {/* Quick Links */}
-    <div className={styles.footerLinks}>
-      <h4>Quick Links</h4>
-      <ul>
-        <li><Link href="/">Home</Link></li>
-        <li><Link href="#shop">Shop</Link></li>
-        <li><Link href="#about">About&nbsp;Us</Link></li>
-      </ul>
-    </div>
-
-    {/* Contact */}
-    <div className={styles.footerContact}>
-      <h4>Contact</h4>
-      <p><a href="mailto:hello@raniriwaaj.com">hello@raniriwaaj.com</a></p>
-      <p><a href="tel:+919510394742">+91&nbsp;95103&nbsp;94742</a></p>
-    </div>
-
-    {/* Social */}
-    <div className={styles.footerSocial}>
-      <h4>Follow&nbsp;Us</h4>
-      <div className={styles.socialIcons}>
-        <a href="https://instagram.com/raniriwaaj" aria-label="Instagram" target="_blank" rel="noopener">
-          <FontAwesomeIcon icon={faInstagram} />
-        </a>
-        <a href="https://facebook.com/raniriwaaj" aria-label="Facebook" target="_blank" rel="noopener">
-          <FontAwesomeIcon icon={faFacebookF} />
-        </a>
-        <a href="https://linkedin.com/company/raniriwaaj" aria-label="LinkedIn" target="_blank" rel="noopener">
-          <FontAwesomeIcon icon={faLinkedinIn} />
-        </a>
-      </div>
-    </div>
-  </div>
-
-  <div className={styles.copyRow}>
-    <p>&copy; {new Date().getFullYear()} Rani Riwaaj. All rights reserved.</p>
-  </div>
-</footer>
+<SiteFooter />
         {quickViewProduct && (
           <div
             className={styles.quickViewBackdrop}
