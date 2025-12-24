@@ -379,34 +379,40 @@
 .categoryItem{
   scroll-snap-align: start;
   display:flex; flex-direction: column; align-items:center; gap:8px;
-  min-width: 98px; padding: 10px 10px 12px;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  background: #fff;
+  min-width: 96px; padding: 6px 8px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
   text-decoration: none; color:#0f172a; font-weight:600;
-  box-shadow: 0 6px 12px rgba(11,15,20,.04);
-  transition: transform .2s ease, box-shadow .25s ease, border-color .25s ease, background .25s ease;
+  box-shadow: none;
+  transition: transform .2s ease, color .2s ease;
 }
 .categoryItem:hover{
   transform: translateY(-2px);
-  box-shadow: 0 14px 24px rgba(11,15,20,.10);
-  border-color: #dfe6f4;
-  background: var(--wash);
 }
 .activeItem{
-  border-color: var(--blue);
-  box-shadow: 0 10px 20px rgba(11,87,208,.12);
+  color: var(--blue);
 }
 
 .avatarWrapper{
-  width: 72px; height: 72px; border-radius: 16px; overflow:hidden;
+  width: clamp(80px, 9vw, 96px);
+  height: clamp(80px, 9vw, 96px);
+  border-radius: 999px; overflow:hidden;
   display:grid; place-items:center;
-  background: radial-gradient(60% 60% at 30% 20%, #fff 0, rgba(11,87,208,.10) 60%, transparent 100%);
-  border: 1px solid rgba(11,87,208,.18);
+  background: #f6f7fb;
+  box-shadow: 0 6px 16px rgba(11,15,20,.08);
+  transition: box-shadow .25s ease, transform .25s ease;
 }
-.avatarIcon{ font-size: 24px; color: var(--blue); }
+.categoryItem:hover .avatarWrapper{
+  box-shadow: 0 12px 24px rgba(11,15,20,.14);
+  transform: translateY(-1px);
+}
+.activeItem .avatarWrapper{
+  box-shadow: 0 0 0 2px var(--blue), 0 12px 24px rgba(11,87,208,.18);
+}
+.avatarIcon{ font-size: 28px; color: var(--blue); }
 .avatarImg{ width: 100%; height: 100%; object-fit: cover; display:block; }
-.avatarLabel{ font-size: 13px; color:#0f172a; }
+.avatarLabel{ font-size: 13px; color: currentColor; }
 
 .navArrow{
   position: absolute; top: 50%; transform: translateY(-50%);
@@ -500,8 +506,13 @@
   transition: transform .2s ease, box-shadow .2s ease;
 }
 .wishlist:hover{ transform: translateY(-1px); box-shadow: var(--sh-2); }
-/* Heart icon in pink */
-.wishlist :global(svg){ color:#ff3b7a; }
+/* Heart icon default */
+.wishlist :global(svg){ color:#9aa4b2; }
+.wishlistActive{
+  background: #ffe6ef;
+  border-color: #ffd1e1;
+}
+.wishlistActive :global(svg){ color:#ff3b7a; }
 
 .badgeJustIn, .badgeMain, .rating{
   pointer-events: all; display:inline-flex; align-items:center; gap:6px;
@@ -636,12 +647,22 @@
 /* =========================================================
    QUICK VIEW MODAL
    ========================================================= */
-.quickViewBackdrop{ position: fixed; inset: 0; z-index: 4000; background: rgba(0,0,0,.4); backdrop-filter: blur(4px); display:grid; place-items:center; }
-.quickViewModal{ width: min(640px, 92vw); background: #fff; border: 1px solid var(--line); border-radius: var(--r-3); box-shadow: var(--sh-2); padding: 18px; position: relative; animation: modalIn .3s ease both; }
+.quickViewBackdrop{ position: fixed; inset: 0; z-index: 4000; background: rgba(0,0,0,.4); backdrop-filter: blur(4px); display:grid; place-items:center; padding: 24px 12px; overflow-y: auto; }
+.quickViewModal{ width: min(640px, 92vw); max-height: 88vh; background: #fff; border: 1px solid var(--line); border-radius: var(--r-3); box-shadow: var(--sh-2); padding: 18px; position: relative; animation: modalIn .3s ease both; display: flex; flex-direction: column; }
 @keyframes modalIn{ from{ transform: translateY(8px) scale(.98); opacity: 0; } to{ transform: translateY(0) scale(1); opacity: 1; } }
 .quickViewClose{ position: absolute; right: 10px; top: 6px; background: transparent; border: 0; font-size: 28px; cursor: pointer; line-height: 1; color:#000; opacity:.65; }
 .quickViewClose:hover{ opacity: 1; }
 .modalLoader{ width: 36px; height: 36px; border-radius: 999px; border: 3px solid #e6eefc; border-top-color: var(--blue); margin: 12px auto; animation: spin .9s linear infinite; }
+.quickViewContent{ overflow: auto; display: grid; gap: 12px; padding-right: 4px; }
+.quickViewMedia{
+  position: relative;
+  width: 100%;
+  height: clamp(240px, 52vh, 420px);
+  border-radius: 14px;
+  overflow: hidden;
+  background: #f6f7fb;
+}
+.quickViewImg{ object-fit: contain; }
 .modalPrice{ font-weight: 800; font-size: 18px; margin: 8px 0 12px; }
 .addCartBtn{ display:inline-flex; align-items:center; justify-content:center; width: 100%; padding: 12px 14px; border: 0; border-radius: 10px; font-weight: 800; color:#fff; background: linear-gradient(135deg, var(--blue), var(--blue-2)); box-shadow: 0 10px 20px rgba(11,87,208,.20); cursor: pointer; transition: transform .2s ease, box-shadow .25s ease; }
 .addCartBtn:hover{ transform: translateY(-1px); box-shadow: var(--sh-2); }

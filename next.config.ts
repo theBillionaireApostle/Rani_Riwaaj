@@ -2,9 +2,16 @@ import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   images: {
-    domains: ['res.cloudinary.com'],
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "res.cloudinary.com",
+        pathname: "/**",
+      },
+    ],
+    unoptimized: process.env.NODE_ENV === "development",
   },
-typescript: {
+  typescript: {
     // WARNING: This setting bypasses type checking during production builds
     ignoreBuildErrors: true,
   },

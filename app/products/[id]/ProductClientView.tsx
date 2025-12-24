@@ -51,6 +51,7 @@ export default function ProductClientView({
 
   // Auth listener
   useEffect(() => {
+    if (!auth) return;
     const unsub = onAuthStateChanged(auth, (u) => setUser(u));
     return () => unsub();
   }, []);

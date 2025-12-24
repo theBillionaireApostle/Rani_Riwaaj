@@ -7,12 +7,14 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation"; // for redirection
 // Import FontAwesome icons
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faShoppingCart, faHeart, faThLarge, faChevronLeft, faChevronRight, faChevronDown, faFilter } from "@fortawesome/free-solid-svg-icons";
-import { faWhatsapp,faInstagram, faFacebookF, faLinkedinIn } from "@fortawesome/free-brands-svg-icons";
-import { faCartPlus } from "@fortawesome/free-solid-svg-icons";
 import {
-  
-  faStar as faStarSolid,
+  faCartPlus,
+  faChevronDown,
+  faChevronLeft,
+  faChevronRight,
+  faFilter,
+  faHeart,
+  faThLarge,
 } from "@fortawesome/free-solid-svg-icons";
 
 import SiteHeader from "@/components/layout/SiteHeader";
@@ -22,6 +24,7 @@ import { onAuthStateChanged, User, signOut } from "firebase/auth";
 import { auth } from "./firebaseClient";
 import styles from "./page.module.css";
 import { toast } from "react-toastify";
+import { useWishlist } from "@/lib/useWishlist";
 
 // ---------- Custom Select (prevents shrink, animated, accessible) ----------
 type Option = { value: string; label: string };
@@ -198,15 +201,6 @@ type Product = {
   additionalImages?: string[];
 };
 
-interface Props {
-  productsLoading: boolean;
-  visibleProducts: Product[];
-  handleAddToCart: (p: Product) => void;
-  handleWhatsAppEnquiry: (p: Product) => void;
-  loadMoreRef: React.RefObject<HTMLDivElement>;
-}
-
-
 export default function Home() {
   // Responsive: mobile breakpoint (<= 640px)
   const [isMobile, setIsMobile] = useState(false);
@@ -273,11 +267,8 @@ export default function Home() {
     { value: "price-asc", label: "Price: Low to High" },
     { value: "price-desc",label: "Price: High to Low" },
   ];
-  // Visible count for lazy loading
-  const [visibleCount, setVisibleCount] = useState(10);
   // sidebar visibility for Filter drawer
   const [filterOpen, setFilterOpen] = useState(false);
-  const loadMoreRef = useRef<HTMLDivElement>(null);
 
   // New state for Firebase user and auth loading
   const [user, setUser] = useState<User | null>(null);
@@ -290,6 +281,10 @@ export default function Home() {
   const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
   const [quickViewLoading, setQuickViewLoading] = useState(true);
   const closeQuickView = () => setQuickViewProduct(null);
+  const { has: isWishlisted, toggle: toggleWishlist } = useWishlist({
+    userId: user?.uid,
+    enabled: !!user,
+  });
 
 
   useEffect(() => {
@@ -355,6 +350,10 @@ export default function Home() {
 
   // Listen to Firebase auth state
   useEffect(() => {
+    if (!auth) {
+      setAuthLoading(false);
+      return;
+    }
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       setAuthLoading(false);
@@ -399,11 +398,6 @@ export default function Home() {
     const num = parseFloat(cleaned);
     return isNaN(num) ? 0 : num;
   }
-
-  // Reset visible count when filtered/sorted products change
-  useEffect(() => {
-    setVisibleCount(10);
-  }, [searchTerm, sortOption, products]);
 
   // Derived data: filtering and sorting
   const filteredProducts = useMemo(
@@ -492,77 +486,6 @@ export default function Home() {
 
   // total count used in controls bar
   const totalProducts = sortedProducts.length;
-
-  // Products to display based on lazy loading
-  const visibleProducts = useMemo(
-    () => enrichedProducts.slice(0, visibleCount),
-    [enrichedProducts, visibleCount]
-  );
-
-  const viewportRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const el = viewportRef.current;
-    if (!el) return;
-
-    let isDown = false;
-    let startX = 0, startY = 0;
-    let scrollLeft = 0, scrollTop = 0;
-
-    const onDown = (e: PointerEvent) => {
-      isDown = true;
-      el.setPointerCapture(e.pointerId);
-      startX = e.clientX;
-      startY = e.clientY;
-      scrollLeft = el.scrollLeft;
-      scrollTop = el.scrollTop;
-    };
-    const onMove = (e: PointerEvent) => {
-      if (!isDown) return;
-      // prevent text-select
-      e.preventDefault();
-      const dx = e.clientX - startX;
-      const dy = e.clientY - startY;
-      el.scrollLeft = scrollLeft - dx;
-      el.scrollTop  = scrollTop  - dy;
-    };
-    const onUp = (e: PointerEvent) => {
-      isDown = false;
-      el.releasePointerCapture(e.pointerId);
-    };
-
-    el.addEventListener("pointerdown", onDown);
-    el.addEventListener("pointermove", onMove);
-    el.addEventListener("pointerup",   onUp);
-    el.addEventListener("pointerleave", onUp);
-
-    return () => {
-      el.removeEventListener("pointerdown", onDown);
-      el.removeEventListener("pointermove", onMove);
-      el.removeEventListener("pointerup",   onUp);
-      el.removeEventListener("pointerleave", onUp);
-    };
-  }, []);
-   
-  // Intersection Observer for lazy loading
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && visibleCount < sortedProducts.length) {
-          setVisibleCount((prev) => Math.min(prev + 10, sortedProducts.length));
-        }
-      },
-      { threshold: 1 }
-    );
-    if (loadMoreRef.current) {
-      observer.observe(loadMoreRef.current);
-    }
-    return () => {
-      if (loadMoreRef.current) {
-        observer.unobserve(loadMoreRef.current);
-      }
-    };
-  }, [visibleCount, sortedProducts]);
 
   // --- Add to Cart Handler ---
   const handleAddToCart = async (product: any) => {
@@ -671,21 +594,12 @@ export default function Home() {
     : enrichedProducts.slice(0, 4);
 
   // — Section data helpers (4 on desktop, all on mobile) —
-  const featuredItems = isMobile ? visibleProducts : visibleProducts.slice(0, 4);
-
-  const topPicksBase = enrichedProducts; // could be a curated subset
-  const topPicksItems = isMobile ? topPicksBase : topPicksBase.slice(0, 4);
-
-  const recommendedBase = enrichedProducts.slice(4); // anything beyond first few
-  const recommendedItems = isMobile ? recommendedBase : recommendedBase.slice(0, 4);
-
   const newArrivalBase = newArrivalProducts; // just-in or fallback
   const newArrivalItems = isMobile ? newArrivalBase : newArrivalBase.slice(0, 4);
 
-  const bestSellersBase = [...enrichedProducts].sort((a, b) => (b.reviews ?? 0) - (a.reviews ?? 0));
-  const bestSellersItems = isMobile ? bestSellersBase : bestSellersBase.slice(0, 4);
-
-  const onSaleBase = enrichedProducts.filter(p => p.originalPrice && p.originalPrice > p.price);
+  const onSaleBase = enrichedProducts.filter(
+    (p) => p.originalPrice && p.originalPrice > p.price
+  );
   const onSaleItems = isMobile ? onSaleBase : onSaleBase.slice(0, 4);
 
   return (
@@ -944,10 +858,10 @@ export default function Home() {
                 >
                 <div className={styles.avatarWrapper}>
                   <Image
-                    src={c.image?.url || "/placeholder.png"}
+                    src={c.image?.url || "/images/phulkari_bag.webp"}
                     alt={c.name}
-                    width={72}
-                    height={72}
+                    width={96}
+                    height={96}
                     className={styles.avatarImg}
                   />
                 </div>
@@ -973,20 +887,28 @@ export default function Home() {
     </div>
   </section>
 
-     {/* —————————————————————————————
-     PRODUCTS  ✦  Featured Collections
+{/* —————————————————————————————
+     NEW ARRIVALS
 ————————————————————————————— */}
 <section id="shop" className={styles.featuredProducts}>
-  <h2 className={styles.sectionTitle}>Featured Collections</h2>
-
+  <h2 className={styles.sectionTitle}>New Arrivals</h2>
   {productsLoading ? (
     <div className={styles.productsLoader}>
       <div className={styles.spinner} />
     </div>
   ) : (
-    <div className={styles.viewport} ref={viewportRef}>
+    <div className={styles.viewport}>
       <ul className={styles.productsWrapper}>
-        {featuredItems.map((p) => (
+      {newArrivalItems.map((p) => {
+        const wishlisted = isWishlisted(p._id);
+        const image =
+          p.defaultImage?.url ||
+          p.additionalImages?.[0] ||
+          "/images/phulkari_bag.webp";
+        const price =
+          typeof p.price === "number" ? p.price : parsePrice(p.price);
+
+        return (
           <li key={p._id} className={styles.cardShell}>
             {/* QUICK VIEW BUTTON */}
             <button
@@ -1002,10 +924,10 @@ export default function Home() {
               Quick&nbsp;View
             </button>
             <Link href={`/products/${p._id}`} className={styles.cardLink}>
-              {/* ── IMAGE + TOP BAR ───────────────────────────── */}
+              {/* — IMAGE + TOP BAR — */}
               <figure className={styles.cardHero}>
                 {[
-                  p.defaultImage?.url || "/placeholder.png",
+                  p.defaultImage?.url || "/images/phulkari_bag.webp",
                   ...(p.additionalImages ?? [])
                 ].slice(0, 4).map((src, idx) => (
                   <Image
@@ -1020,454 +942,37 @@ export default function Home() {
                 ))}
                 <div className={styles.topBar}>
                   <button
-                    className={styles.wishlist}
-                    aria-label="Add to wishlist"
-                    onClick={(e) => e.preventDefault()}
+                    type="button"
+                    className={`${styles.wishlist} ${
+                      wishlisted ? styles.wishlistActive : ""
+                    }`}
+                    aria-label={
+                      wishlisted ? "Remove from wishlist" : "Add to wishlist"
+                    }
+                    aria-pressed={wishlisted}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (authLoading) return;
+                      if (!user) {
+                        toast.info("Please sign in to use your wishlist.");
+                        router.push("/signin");
+                        return;
+                      }
+                      toggleWishlist({
+                        id: p._id,
+                        name: p.name,
+                        price,
+                        image,
+                      });
+                    }}
                   >
                     <FontAwesomeIcon icon={faHeart} />
                   </button>
-
-                  {p.justIn && <span className={styles.badgeJustIn}>NEW</span>}
-                  {p.badgeLabel && (
-                    <span className={styles.badgeMain}>{p.badgeLabel}</span>
-                  )}
-                  {p.rating != null && (
-                    <span className={styles.rating}>
-                      <FontAwesomeIcon icon={faStarSolid} />
-                      {p.rating.toFixed(1)}
-                    </span>
-                  )}
+                  <span className={styles.badgeJustIn}>NEW</span>
                 </div>
               </figure>
-
-              {/* ── TEXT INFO ────────────────────────────────── */}
-              <div className={styles.body}>
-                <h3 className={styles.name}>{p.name}</h3>
-
-                <div className={styles.priceRow}>
-                  <span className={styles.current}>₹{p.price}</span>
-                  {p.originalPrice && (
-                    <>
-                      <span className={styles.original}>
-                        ₹{p.originalPrice}
-                      </span>
-                      <span className={styles.save}>
-                        –
-                        {Math.round(
-                          (1 - p.price / p.originalPrice) * 100
-                        )}
-                        %
-                      </span>
-                    </>
-                  )}
-                </div>
-
-                {!!p.colors?.length && (
-                  <div className={styles.swatchRow}>
-                    {p.colors.slice(0, 3).map((c: string) => (
-                      <span
-                        key={c}
-                        className={styles.swatch}
-                        style={{ backgroundColor: c }}
-                      />
-                    ))}
-                    {p.colors.length > 3 && (
-                      <span className={styles.more}>+{p.colors.length - 3}</span>
-                    )}
-                  </div>
-                )}
-              </div>
-            </Link>
-
-            {/* ── FLOATING FAB (add to cart) ───────────────── */}
-            <button
-              type="button"
-              className={styles.fab}
-              aria-label="Add to cart"
-              onClick={(e) => {
-                e.stopPropagation();
-                const btn = e.currentTarget as HTMLButtonElement;   // cache ref
-                btn.classList.add(styles.pulse);
-
-                handleAddToCart(p);                                 // perform add‑to‑cart
-
-                setTimeout(() => {
-                  if (btn.isConnected) btn.classList.remove(styles.pulse);
-                }, 420);
-              }}
-            >
-              <FontAwesomeIcon icon={faCartPlus} />
-            </button>
-          </li>
-        ))}
-      </ul>
-    </div>
-  )}
-
-  <div ref={loadMoreRef} className={styles.loadMore} />
-</section>
-
-{/* —————————————————————————————
-     TOP PICKS
-————————————————————————————— */}
-<section className={styles.featuredProducts}>
-  <h2 className={styles.sectionTitle}>Top Picks</h2>
-  <div className={styles.viewport}>
-    <ul className={styles.productsWrapper}>
-      {topPicksItems.map((p) => (
-        <li key={p._id} className={styles.cardShell}>
-          {/* QUICK VIEW BUTTON */}
-          <button
-            type="button"
-            className={styles.quickViewBtn}
-            aria-label="Quick view"
-            onClick={(e) => {
-              e.stopPropagation();
-              setQuickViewLoading(true);
-              setQuickViewProduct(p);
-            }}
-          >
-            Quick&nbsp;View
-          </button>
-          <Link href={`/products/${p._id}`} className={styles.cardLink}>
-            {/* ── IMAGE + TOP BAR ───────────────────────────── */}
-            <figure className={styles.cardHero}>
-              {[
-                p.defaultImage?.url || "/placeholder.png",
-                ...(p.additionalImages ?? [])
-              ].slice(0, 4).map((src, idx) => (
-                <Image
-                  key={idx}
-                  src={src}
-                  alt={p.name}
-                  fill
-                  sizes="(max-width: 768px) 100vw, 280px"
-                  className={`${styles.cardHeroImg} ${idx > 0 ? styles.slideImg : ""}`}
-                  style={{ animationDelay: `${idx * 3}s` }}
-                />
-              ))}
-              <div className={styles.topBar}>
-                <button
-                  className={styles.wishlist}
-                  aria-label="Add to wishlist"
-                  onClick={(e) => e.preventDefault()}
-                >
-                  <FontAwesomeIcon icon={faHeart} />
-                </button>
-                {p.justIn && <span className={styles.badgeJustIn}>NEW</span>}
-                {p.badgeLabel && (
-                  <span className={styles.badgeMain}>{p.badgeLabel}</span>
-                )}
-                {p.rating != null && (
-                  <span className={styles.rating}>
-                    <FontAwesomeIcon icon={faStarSolid} />
-                    {p.rating.toFixed(1)}
-                  </span>
-                )}
-              </div>
-            </figure>
-            {/* ── TEXT INFO ────────────────────────────────── */}
-            <div className={styles.body}>
-              <h3 className={styles.name}>{p.name}</h3>
-              <div className={styles.priceRow}>
-                <span className={styles.current}>₹{p.price}</span>
-                {p.originalPrice && (
-                  <>
-                    <span className={styles.original}>₹{p.originalPrice}</span>
-                    <span className={styles.save}>
-                      –
-                      {Math.round((1 - p.price / p.originalPrice) * 100)}
-                      %
-                    </span>
-                  </>
-                )}
-              </div>
-              {!!p.colors?.length && (
-                <div className={styles.swatchRow}>
-                  {p.colors.slice(0, 3).map((c: string) => (
-                    <span
-                      key={c}
-                      className={styles.swatch}
-                      style={{ backgroundColor: c }}
-                    />
-                  ))}
-                  {p.colors.length > 3 && (
-                    <span className={styles.more}>+{p.colors.length - 3}</span>
-                  )}
-                </div>
-              )}
-            </div>
-          </Link>
-          {/* ── FLOATING FAB (add to cart) ───────────────── */}
-          <button
-            type="button"
-            className={styles.fab}
-            aria-label="Add to cart"
-            onClick={(e) => {
-              e.stopPropagation();
-              const btn = e.currentTarget as HTMLButtonElement;
-              btn.classList.add(styles.pulse);
-              handleAddToCart(p);
-              setTimeout(() => {
-                if (btn.isConnected) btn.classList.remove(styles.pulse);
-              }, 420);
-            }}
-          >
-            <FontAwesomeIcon icon={faCartPlus} />
-          </button>
-        </li>
-      ))}
-    </ul>
-  </div>
-</section>
-
-{/* —————————————————————————————
-     RECOMMENDED FOR YOU
-————————————————————————————— */}
-<section className={styles.featuredProducts}>
-  <h2 className={styles.sectionTitle}>Recommended for You</h2>
-  <div className={styles.viewport}>
-    <ul className={styles.productsWrapper}>
-      {recommendedItems.map((p) => (
-        <li key={p._id} className={styles.cardShell}>
-          {/* QUICK VIEW BUTTON */}
-          <button
-            type="button"
-            className={styles.quickViewBtn}
-            aria-label="Quick view"
-            onClick={(e) => {
-              e.stopPropagation();
-              setQuickViewLoading(true);
-              setQuickViewProduct(p);
-            }}
-          >
-            Quick&nbsp;View
-          </button>
-          <Link href={`/products/${p._id}`} className={styles.cardLink}>
-            {/* ── IMAGE + TOP BAR ───────────────────────────── */}
-            <figure className={styles.cardHero}>
-              {[
-                p.defaultImage?.url || "/placeholder.png",
-                ...(p.additionalImages ?? [])
-              ].slice(0, 4).map((src, idx) => (
-                <Image
-                  key={idx}
-                  src={src}
-                  alt={p.name}
-                  fill
-                  sizes="(max-width: 768px) 100vw, 280px"
-                  className={`${styles.cardHeroImg} ${idx > 0 ? styles.slideImg : ""}`}
-                  style={{ animationDelay: `${idx * 3}s` }}
-                />
-              ))}
-              <div className={styles.topBar}>
-                <button
-                  className={styles.wishlist}
-                  aria-label="Add to wishlist"
-                  onClick={(e) => e.preventDefault()}
-                >
-                  <FontAwesomeIcon icon={faHeart} />
-                </button>
-                {p.justIn && <span className={styles.badgeJustIn}>NEW</span>}
-                {p.badgeLabel && (
-                  <span className={styles.badgeMain}>{p.badgeLabel}</span>
-                )}
-                {p.rating != null && (
-                  <span className={styles.rating}>
-                    <FontAwesomeIcon icon={faStarSolid} />
-                    {p.rating.toFixed(1)}
-                  </span>
-                )}
-              </div>
-            </figure>
-            {/* ── TEXT INFO ────────────────────────────────── */}
-            <div className={styles.body}>
-              <h3 className={styles.name}>{p.name}</h3>
-              <div className={styles.priceRow}>
-                <span className={styles.current}>₹{p.price}</span>
-                {p.originalPrice && (
-                  <>
-                    <span className={styles.original}>₹{p.originalPrice}</span>
-                    <span className={styles.save}>
-                      –
-                      {Math.round((1 - p.price / p.originalPrice) * 100)}
-                      %
-                    </span>
-                  </>
-                )}
-              </div>
-              {!!p.colors?.length && (
-                <div className={styles.swatchRow}>
-                  {p.colors.slice(0, 3).map((c: string) => (
-                    <span
-                      key={c}
-                      className={styles.swatch}
-                      style={{ backgroundColor: c }}
-                    />
-                  ))}
-                  {p.colors.length > 3 && (
-                    <span className={styles.more}>+{p.colors.length - 3}</span>
-                  )}
-                </div>
-              )}
-            </div>
-          </Link>
-          {/* ── FLOATING FAB (add to cart) ───────────────── */}
-          <button
-            type="button"
-            className={styles.fab}
-            aria-label="Add to cart"
-            onClick={(e) => {
-              e.stopPropagation();
-              const btn = e.currentTarget as HTMLButtonElement;
-              btn.classList.add(styles.pulse);
-              handleAddToCart(p);
-              setTimeout(() => {
-                if (btn.isConnected) btn.classList.remove(styles.pulse);
-              }, 420);
-            }}
-          >
-            <FontAwesomeIcon icon={faCartPlus} />
-          </button>
-        </li>
-      ))}
-    </ul>
-  </div>
-</section>
-
-{/* —————————————————————————————
-     NEW ARRIVALS
-————————————————————————————— */}
-<section className={styles.featuredProducts}>
-  <h2 className={styles.sectionTitle}>New Arrivals</h2>
-  <div className={styles.viewport}>
-    <ul className={styles.productsWrapper}>
-      {newArrivalItems.map((p) => (
-        <li key={p._id} className={styles.cardShell}>
-          {/* QUICK VIEW BUTTON */}
-          <button
-            type="button"
-            className={styles.quickViewBtn}
-            aria-label="Quick view"
-            onClick={(e) => {
-              e.stopPropagation();
-              setQuickViewLoading(true);
-              setQuickViewProduct(p);
-            }}
-          >
-            Quick&nbsp;View
-          </button>
-          <Link href={`/products/${p._id}`} className={styles.cardLink}>
-            {/* — IMAGE + TOP BAR — */}
-            <figure className={styles.cardHero}>
-              {[
-                p.defaultImage?.url || "/placeholder.png",
-                ...(p.additionalImages ?? [])
-              ].slice(0, 4).map((src, idx) => (
-                <Image
-                  key={idx}
-                  src={src}
-                  alt={p.name}
-                  fill
-                  sizes="(max-width: 768px) 100vw, 280px"
-                  className={`${styles.cardHeroImg} ${idx > 0 ? styles.slideImg : ""}`}
-                  style={{ animationDelay: `${idx * 3}s` }}
-                />
-              ))}
-              <div className={styles.topBar}>
-                <button
-                  className={styles.wishlist}
-                  aria-label="Add to wishlist"
-                  onClick={(e) => e.preventDefault()}
-                >
-                  <FontAwesomeIcon icon={faHeart} />
-                </button>
-                <span className={styles.badgeJustIn}>NEW</span>
-              </div>
-            </figure>
-            {/* — TEXT — */}
-            <div className={styles.body}>
-              <h3 className={styles.name}>{p.name}</h3>
-              <div className={styles.priceRow}>
-                <span className={styles.current}>₹{p.price}</span>
-                {p.originalPrice && (
-                  <>
-                    <span className={styles.original}>₹{p.originalPrice}</span>
-                    <span className={styles.save}>
-                      –{Math.round((1 - p.price / p.originalPrice) * 100)}%
-                    </span>
-                  </>
-                )}
-              </div>
-            </div>
-          </Link>
-          <button
-            type="button"
-            className={styles.fab}
-            aria-label="Add to cart"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleAddToCart(p);
-            }}
-          >
-            <FontAwesomeIcon icon={faCartPlus} />
-          </button>
-        </li>
-      ))}
-    </ul>
-  </div>
-</section>
-
-{/* —————————————————————————————
-     BEST SELLERS
-————————————————————————————— */}
-<section className={styles.featuredProducts}>
-  <h2 className={styles.sectionTitle}>Best Sellers</h2>
-  <div className={styles.viewport}>
-    <ul className={styles.productsWrapper}>
-      {bestSellersItems.map((p) => (
-          <li key={p._id} className={styles.cardShell}>
-            {/* QUICK VIEW BUTTON */}
-            <button
-              type="button"
-              className={styles.quickViewBtn}
-              aria-label="Quick view"
-              onClick={(e) => {
-                e.stopPropagation();
-                setQuickViewLoading(true);
-                setQuickViewProduct(p);
-              }}
-            >
-              Quick&nbsp;View
-            </button>
-            {/* Re‑use the same card markup */}
-            <Link href={`/products/${p._id}`} className={styles.cardLink}>
-              <figure className={styles.cardHero}>
-                {[
-                  p.defaultImage?.url || "/placeholder.png",
-                  ...(p.additionalImages ?? [])
-                ].slice(0, 4).map((src, idx) => (
-                  <Image
-                    key={idx}
-                    src={src}
-                    alt={p.name}
-                    fill
-                    sizes="(max-width: 768px) 100vw, 280px"
-                    className={`${styles.cardHeroImg} ${idx > 0 ? styles.slideImg : ""}`}
-                    style={{ animationDelay: `${idx * 3}s` }}
-                  />
-                ))}
-                <div className={styles.topBar}>
-                  <button
-                    className={styles.wishlist}
-                    aria-label="Add to wishlist"
-                    onClick={(e) => e.preventDefault()}
-                  >
-                    <FontAwesomeIcon icon={faHeart} />
-                  </button>
-                  <span className={styles.badgeMain}>Bestseller</span>
-                </div>
-              </figure>
+              {/* — TEXT — */}
               <div className={styles.body}>
                 <h3 className={styles.name}>{p.name}</h3>
                 <div className={styles.priceRow}>
@@ -1495,9 +1000,11 @@ export default function Home() {
               <FontAwesomeIcon icon={faCartPlus} />
             </button>
           </li>
-        ))}
+        );
+      })}
     </ul>
   </div>
+)} 
 </section>
 
 {/* —————————————————————————————
@@ -1505,80 +1012,117 @@ export default function Home() {
 ————————————————————————————— */}
 <section className={styles.featuredProducts}>
   <h2 className={styles.sectionTitle}>On Sale</h2>
-  <div className={styles.viewport}>
-    <ul className={styles.productsWrapper}>
-      {onSaleItems.map((p) => (
+  {productsLoading ? (
+    <div className={styles.productsLoader}>
+      <div className={styles.spinner} />
+    </div>
+  ) : (
+    <div className={styles.viewport}>
+      <ul className={styles.productsWrapper}>
+      {onSaleItems.map((p) => {
+        const wishlisted = isWishlisted(p._id);
+        const image =
+          p.defaultImage?.url ||
+          p.additionalImages?.[0] ||
+          "/images/phulkari_bag.webp";
+        const price =
+          typeof p.price === "number" ? p.price : parsePrice(p.price);
+
+        return (
           <li key={p._id} className={styles.cardShell}>
-            {/* QUICK VIEW BUTTON */}
-            <button
-              type="button"
-              className={styles.quickViewBtn}
-              aria-label="Quick view"
-              onClick={(e) => {
-                e.stopPropagation();
-                setQuickViewProduct(p);
-              }}
-            >
-              Quick&nbsp;View
-            </button>
-            {/* Re‑use the same card markup */}
-            <Link href={`/products/${p._id}`} className={styles.cardLink}>
-              <figure className={styles.cardHero}>
-                {[
-                  p.defaultImage?.url || "/placeholder.png",
-                  ...(p.additionalImages ?? [])
-                ].slice(0, 4).map((src, idx) => (
-                  <Image
-                    key={idx}
-                    src={src}
-                    alt={p.name}
-                    fill
-                    sizes="(max-width: 768px) 100vw, 280px"
-                    className={`${styles.cardHeroImg} ${idx > 0 ? styles.slideImg : ""}`}
-                    style={{ animationDelay: `${idx * 3}s` }}
-                  />
-                ))}
-                <div className={styles.topBar}>
-                  <button
-                    className={styles.wishlist}
-                    aria-label="Add to wishlist"
-                    onClick={(e) => e.preventDefault()}
-                  >
-                    <FontAwesomeIcon icon={faHeart} />
-                  </button>
-                  <span className={styles.badgeMain}>Sale</span>
+              {/* QUICK VIEW BUTTON */}
+              <button
+                type="button"
+                className={styles.quickViewBtn}
+                aria-label="Quick view"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setQuickViewProduct(p);
+                }}
+              >
+                Quick&nbsp;View
+              </button>
+              {/* Re‑use the same card markup */}
+              <Link href={`/products/${p._id}`} className={styles.cardLink}>
+                <figure className={styles.cardHero}>
+                  {[
+                    p.defaultImage?.url || "/images/phulkari_bag.webp",
+                    ...(p.additionalImages ?? [])
+                  ].slice(0, 4).map((src, idx) => (
+                    <Image
+                      key={idx}
+                      src={src}
+                      alt={p.name}
+                      fill
+                      sizes="(max-width: 768px) 100vw, 280px"
+                      className={`${styles.cardHeroImg} ${idx > 0 ? styles.slideImg : ""}`}
+                      style={{ animationDelay: `${idx * 3}s` }}
+                    />
+                  ))}
+                  <div className={styles.topBar}>
+                    <button
+                      type="button"
+                    className={`${styles.wishlist} ${
+                        wishlisted ? styles.wishlistActive : ""
+                      }`}
+                      aria-label={
+                        wishlisted ? "Remove from wishlist" : "Add to wishlist"
+                      }
+                      aria-pressed={wishlisted}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (authLoading) return;
+                        if (!user) {
+                          toast.info("Please sign in to use your wishlist.");
+                          router.push("/signin");
+                          return;
+                        }
+                        toggleWishlist({
+                          id: p._id,
+                          name: p.name,
+                          price,
+                          image,
+                        });
+                      }}
+                    >
+                      <FontAwesomeIcon icon={faHeart} />
+                    </button>
+                    <span className={styles.badgeMain}>Sale</span>
+                  </div>
+                </figure>
+                <div className={styles.body}>
+                  <h3 className={styles.name}>{p.name}</h3>
+                  <div className={styles.priceRow}>
+                    <span className={styles.current}>₹{p.price}</span>
+                    {p.originalPrice && (
+                      <>
+                        <span className={styles.original}>₹{p.originalPrice}</span>
+                        <span className={styles.save}>
+                          –{Math.round((1 - p.price / p.originalPrice) * 100)}%
+                        </span>
+                      </>
+                    )}
+                  </div>
                 </div>
-              </figure>
-              <div className={styles.body}>
-                <h3 className={styles.name}>{p.name}</h3>
-                <div className={styles.priceRow}>
-                  <span className={styles.current}>₹{p.price}</span>
-                  {p.originalPrice && (
-                    <>
-                      <span className={styles.original}>₹{p.originalPrice}</span>
-                      <span className={styles.save}>
-                        –{Math.round((1 - p.price / p.originalPrice) * 100)}%
-                      </span>
-                    </>
-                  )}
-                </div>
-              </div>
-            </Link>
-            <button
-              type="button"
-              className={styles.fab}
-              aria-label="Add to cart"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleAddToCart(p);
-              }}
-            >
-              <FontAwesomeIcon icon={faCartPlus} />
-            </button>
-          </li>
-        ))}
+              </Link>
+              <button
+                type="button"
+                className={styles.fab}
+                aria-label="Add to cart"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleAddToCart(p);
+                }}
+              >
+                <FontAwesomeIcon icon={faCartPlus} />
+              </button>
+            </li>
+        );
+      })}
     </ul>
   </div>
+)} 
 </section>
 
 
@@ -1613,33 +1157,37 @@ export default function Home() {
                 &times;
               </button>
 
-              {quickViewLoading && (
-                <div className={styles.modalLoader} />
-              )}
+              <div className={styles.quickViewContent}>
+                {quickViewLoading && (
+                  <div className={styles.modalLoader} />
+                )}
 
-              <Image
-                src={
-                  quickViewProduct.defaultImage?.url || "/placeholder.png"
-                }
-                alt={quickViewProduct.name}
-                width={360}
-                height={360}
-                onLoadingComplete={() => setQuickViewLoading(false)}
-                style={{ width: "100%", height: "auto", borderRadius: 8 }}
-              />
+                <div className={styles.quickViewMedia}>
+                  <Image
+                    src={
+                      quickViewProduct.defaultImage?.url || "/images/phulkari_bag.webp"
+                    }
+                    alt={quickViewProduct.name}
+                    fill
+                    sizes="(max-width: 640px) 88vw, 520px"
+                    className={styles.quickViewImg}
+                    onLoadingComplete={() => setQuickViewLoading(false)}
+                  />
+                </div>
 
-              <h3>{quickViewProduct.name}</h3>
-              <p className={styles.modalPrice}>₹{quickViewProduct.price}</p>
+                <h3>{quickViewProduct.name}</h3>
+                <p className={styles.modalPrice}>₹{quickViewProduct.price}</p>
 
-              <button
-                className={styles.addCartBtn}
-                onClick={() => {
-                  handleAddToCart(quickViewProduct);
-                  closeQuickView();
-                }}
-              >
-                Add to Cart
-              </button>
+                <button
+                  className={styles.addCartBtn}
+                  onClick={() => {
+                    handleAddToCart(quickViewProduct);
+                    closeQuickView();
+                  }}
+                >
+                  Add to Cart
+                </button>
+              </div>
             </div>
           </div>
         )}

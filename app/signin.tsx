@@ -25,6 +25,11 @@ export default function SignInPage() {
 
   // Listen to Firebase auth state changes
   useEffect(() => {
+    if (!auth) {
+      setError("Firebase auth is not configured.");
+      setInitialLoading(false);
+      return;
+    }
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       setInitialLoading(false);
@@ -34,6 +39,10 @@ export default function SignInPage() {
 
   // Handler for Google sign in
   const handleSignIn = async () => {
+    if (!auth || !googleProvider) {
+      setError("Firebase auth is not configured.");
+      return;
+    }
     setLoading(true);
     setError("");
     try {

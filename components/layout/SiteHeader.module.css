@@ -135,7 +135,7 @@
   /* hide the full right cluster (cart, auth, enquire, desktop links) */
   .rightSection{ display:none !important; }
   /* safety: ensure stray auth/cart/whatsapp links never appear on mobile header */
-  .authLink, .enquireBtn, .cartLink{ display:none !important; }
+  .authLink, .enquireBtn, .cartLink, .wishlistLink{ display:none !important; }
 
   .desktopLinks{ display:none; }
 
@@ -182,6 +182,19 @@
   position: relative;
   font-size: 1.5rem;
   color: #333;
+}
+.wishlistLink{
+  position: relative;
+  font-size: 1.35rem;
+  color: #333;
+}
+.wishlistLink :global(svg){
+  color: #9aa4b2;
+  transition: color .2s ease, transform .2s ease;
+}
+.wishlistLink:hover :global(svg){
+  color: #ff3b7a;
+  transform: translateY(-1px);
 }
 .badge {
   position: absolute;
@@ -295,6 +308,7 @@
   /* shrink avatar & cart */
   .userAvatar   { width: 38px; height: 38px; font-size: 0.9rem; }
   .cartLink     { font-size: 1.35rem; }
+  .wishlistLink { font-size: 1.25rem; }
 
   /* WhatsApp btn keeps text but smaller padding */
   .enquireBtn   { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
@@ -315,6 +329,7 @@
 
   /* Cart icon stays, but shrink */
   .cartLink     { font-size: 1.25rem; }
+  .wishlistLink { font-size: 1.15rem; }
 
   /* Auth link smaller font to fit */
   .authLink     { font-size: 0.85rem; }
@@ -330,6 +345,7 @@
   /* Minimal avatar & icons */
   .userAvatar { width: 34px; height: 34px; font-size: 0.8rem; }
   .cartLink   { font-size: 1.15rem; }
+  .wishlistLink { font-size: 1.05rem; }
 
   /* Slightly narrower gaps */
   .rightSection { gap: 0.6rem; }

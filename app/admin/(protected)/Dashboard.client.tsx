@@ -680,7 +680,7 @@ setProducts(prev => [newProduct, ...prev]);
                 <div className={styles.productRow}>
                   <div className={styles.productImageContainer}>
                     <Image
-                      src={product.defaultImage?.url || "/placeholder.png"}
+                      src={product.defaultImage?.url || "/images/phulkari_bag.webp"}
                       alt={product.name}
                       fill
                       sizes="(max-width: 768px) 100vw, 400px"

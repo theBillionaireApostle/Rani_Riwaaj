@@ -11,6 +11,7 @@ import { auth }                      from "../app/firebaseClient"; // adjust as 
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCartPlus, faHeart, faStar } from "@fortawesome/free-solid-svg-icons";
+import { useWishlist } from "@/lib/useWishlist";
 
 import styles from "./productsGrid.module.css";
 
@@ -43,10 +44,15 @@ export function ProductsGrid({ products }: Props) {
   const [user, setUser]           = useState<User | null>(null);
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const API_BASE                  = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5005";
+  const { has: isWishlisted, toggle: toggleWishlist } = useWishlist({
+    userId: user?.uid,
+    enabled: !!user,
+  });
 
   // Watch auth state (and we don't need to fetch existing cart here, since
   // we're always overwriting with our single-item POST)
   useEffect(() => {
+    if (!auth) return;
     const unsub = onAuthStateChanged(auth, setUser);
     return () => unsub();
   }, []);
@@ -119,6 +125,8 @@ export function ProductsGrid({ products }: Props) {
         const swatches = p.colors && p.colors.length
           ? p.colors.slice(0, 3)
           : ["#e81e61", "#06a8f5", "#4daf50"];
+        const wishlisted = isWishlisted(p._id);
+        const image = p.defaultImage?.url ?? "/images/phulkari_bag.webp";
 
         return (
           <li key={p._id} className={styles.cardShell}>
@@ -126,7 +134,31 @@ export function ProductsGrid({ products }: Props) {
             <Link href={`/products/${p._id}`} className={styles.fullLink} />
 
             {/* wishlist heart */}
-            <button className={styles.wishlistBtn} aria-label="Add to wishlist">
+            <button
+              type="button"
+              className={`${styles.wishlistBtn} ${
+                wishlisted ? styles.wishlistBtnActive : ""
+              }`}
+              aria-label={
+                wishlisted ? "Remove from wishlist" : "Add to wishlist"
+              }
+              aria-pressed={wishlisted}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (!user) {
+                  toast.info("Please sign in to use your wishlist.");
+                  router.push("/signin");
+                  return;
+                }
+                toggleWishlist({
+                  id: p._id,
+                  name: p.name,
+                  price: p.price,
+                  image,
+                });
+              }}
+            >
               <FontAwesomeIcon icon={faHeart} />
             </button>
 
@@ -144,7 +176,7 @@ export function ProductsGrid({ products }: Props) {
             {/* hero image */}
             <figure className={styles.cardHero}>
               <Image
-                src={p.defaultImage?.url ?? "/placeholder.png"}
+                src={image}
                 alt={p.name}
                 fill
                 sizes="(max-width: 768px) 100vw, 260px"

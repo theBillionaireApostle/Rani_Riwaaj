@@ -53,6 +53,10 @@ useEffect(() => {
 
   // Listen for Firebase authentication state
   useEffect(() => {
+    if (!auth) {
+      setAuthLoading(false);
+      return;
+    }
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       console.log("Auth state changed. Current user:", currentUser);
       setUser(currentUser);
@@ -244,6 +248,7 @@ useEffect(() => {
     };
 
     const handleLogout = async () => {
+      if (!auth) return;
       try {
         await signOut(auth);
       } catch (error: unknown) {

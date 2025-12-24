@@ -50,12 +50,16 @@
   display: grid;
   place-items: center;
   font-size: 1rem;
-  color: #e91e63;
+  color: #9aa4b2;
   cursor: pointer;
-  transition: background 0.25s;
+  transition: background 0.25s, color 0.2s ease;
 }
 .wishlistBtn:hover {
   background: #fff;
+}
+.wishlistBtnActive{
+  background: #ffe6ef;
+  color: #e91e63;
 }
 
 /* Badge */

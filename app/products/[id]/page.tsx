@@ -19,7 +19,7 @@ export async function generateMetadata({
   return {
     title: `${p.name} | Rani Riwaaj`,
     description: p.desc,
-    openGraph: { images: [p.defaultImage?.url ?? "/placeholder.png"] },
+    openGraph: { images: [p.defaultImage?.url ?? "/images/phulkari_bag.webp"] },
   };
 }
 
@@ -56,7 +56,7 @@ export default async function ProductPage({
     ...Object.values(raw.imagesByColor ?? {}).flat(),
   ].map((img: any) => ({ url: img.url }));
   if (gallery.length === 0) {
-    gallery.push({ url: raw.defaultImage?.url ?? "/placeholder.png" });
+    gallery.push({ url: raw.defaultImage?.url ?? "/images/phulkari_bag.webp" });
   }
 
   const enriched = {

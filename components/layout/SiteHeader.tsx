@@ -9,11 +9,13 @@ import {
   faChevronDown,
   faBars,
   faXmark,
+  faHeart,
 } from "@fortawesome/free-solid-svg-icons";
 import { faWhatsapp } from "@fortawesome/free-brands-svg-icons";
 
 import { auth } from "@/app/firebaseClient";          // ← adjust if auth is elsewhere
 import styles from "./SiteHeader.module.css";
+import { useWishlist } from "@/lib/useWishlist";
 
 type Props = {
   /** allow the page to pass cartCount if you fetch it there */
@@ -25,11 +27,19 @@ export default function Header({ initialCartCount = 0 }: Props) {
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [cartCount, setCartCount] = useState(initialCartCount);
+  const { count: wishlistCount } = useWishlist({
+    userId: user?.uid,
+    enabled: !!user,
+  });
 
   /* ───────── MOBILE MENU ───────── */
   const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
+    if (!auth) {
+      setAuthLoading(false);
+      return;
+    }
     const unsub = onAuthStateChanged(auth, (u) => {
       setUser(u);
       setAuthLoading(false);
@@ -72,6 +82,10 @@ export default function Header({ initialCartCount = 0 }: Props) {
 
   // Helper to close after navigation in mobile
   const closeMobile = () => setMobileOpen(false);
+  const handleLogout = () => {
+    if (!auth) return;
+    signOut(auth);
+  };
 
   return (
     <nav className={styles.nav} role="navigation" aria-label="Primary">
@@ -100,6 +114,15 @@ export default function Header({ initialCartCount = 0 }: Props) {
             <Link href="/contact">Contact</Link>
           </div>
 
+          <Link href="/wishlist" className={styles.wishlistLink} aria-label="Wishlist">
+            <FontAwesomeIcon icon={faHeart} />
+            {wishlistCount > 0 && (
+              <span className={styles.badge} aria-label={`${wishlistCount} items in wishlist`}>
+                {wishlistCount}
+              </span>
+            )}
+          </Link>
+
           {authLoading ? (
             <div className={styles.loader} />
           ) : user ? (
@@ -115,7 +138,7 @@ export default function Header({ initialCartCount = 0 }: Props) {
               </Link>
 
               {/* USER DROPDOWN */}
-              <UserDropdown user={user} onLogout={() => signOut(auth)} />
+              <UserDropdown user={user} onLogout={handleLogout} />
             </>
           ) : (
             <Link href="/signin" className={styles.authLink}>
@@ -180,6 +203,14 @@ export default function Header({ initialCartCount = 0 }: Props) {
         <div className={styles.menuDivider} />
 
         <div className={styles.mobileActions}>
+          <Link href="/wishlist" className={styles.cartRow} onClick={closeMobile}>
+            <FontAwesomeIcon icon={faHeart} />
+            <span>Wishlist</span>
+            {wishlistCount > 0 && (
+              <em className={styles.badge}>{wishlistCount}</em>
+            )}
+          </Link>
+
           <Link href="/cart" className={styles.cartRow} onClick={closeMobile}>
             <FontAwesomeIcon icon={faShoppingCart} />
             <span>Cart</span>
@@ -190,7 +221,7 @@ export default function Header({ initialCartCount = 0 }: Props) {
             <button
               type="button"
               className={styles.dropdownItem}
-              onClick={() => { signOut(auth); closeMobile(); }}
+              onClick={() => { handleLogout(); closeMobile(); }}
             >
               Logout
             </button>

@@ -36,6 +36,11 @@ export default function SignInPage() {
   const [redirectCountdown, setRedirectCountdown] = useState(5);
 
   useEffect(() => {
+    if (!auth) {
+      setError("Firebase auth is not configured.");
+      setInitialLoading(false);
+      return;
+    }
     const unsub = onAuthStateChanged(auth, (u) => {
       setUser(u);
       setInitialLoading(false);
@@ -82,6 +87,10 @@ export default function SignInPage() {
   }, [user, router]);
 
   const handleGoogle = async () => {
+    if (!auth || !googleProvider) {
+      setError("Firebase auth is not configured.");
+      return;
+    }
     setLoading(true);
     setError("");
     try {
@@ -97,6 +106,10 @@ export default function SignInPage() {
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    if (!auth) {
+      setError("Firebase auth is not configured.");
+      return;
+    }
     if (!email.trim()) return setError("Email is required.");
     if (password.length < 6) return setError("Password must be ≥ 6 chars.");
     if (mode === "signup" && password !== confirmPwd) {
