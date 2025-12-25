@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { onAuthStateChanged, User, signOut } from "firebase/auth";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -262,6 +262,7 @@ function getInitials(user: User){
 /* ──────────────── UserDropdown (desktop) ──────────────── */
 function UserDropdown({ user, onLogout }: { user: User; onLogout: () => void; }) {
   const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
 
   const initials = getInitials(user);
 
@@ -272,8 +273,20 @@ function UserDropdown({ user, onLogout }: { user: User; onLogout: () => void; })
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
 
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => {
+      if (!wrapRef.current) return;
+      if (!wrapRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [open]);
+
   return (
-    <div className={styles.userDropdown}>
+    <div className={styles.userDropdown} ref={wrapRef}>
       <button
         type="button"
         className={styles.userAvatar}
@@ -286,7 +299,10 @@ function UserDropdown({ user, onLogout }: { user: User; onLogout: () => void; })
       </button>
 
       {open && (
-        <div role="menu" className={styles.dropdownMenu}>
+        <div
+          role="menu"
+          className={`${styles.dropdownMenu} ${styles.dropdownMenuOpen}`}
+        >
           <button className={styles.dropdownItem} onClick={onLogout} role="menuitem">
             Logout
           </button>
