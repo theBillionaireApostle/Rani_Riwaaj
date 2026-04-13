@@ -19,7 +19,6 @@ import {
   PackageCheck,
   RefreshCw,
   ShieldAlert,
-  Sparkles,
   Tags,
 } from "lucide-react";
 import styles from "./analytics.module.css";
@@ -639,6 +638,16 @@ export default function AnalyticsPage() {
   const leadingPriceBand = [...analytics.priceBands].sort(
     (left, right) => right.value - left.value
   )[0];
+  const summaryLine =
+    analytics.attentionCount > 0
+      ? `${numberFormatter.format(analytics.totalProducts)} products in the catalog, ${numberFormatter.format(
+          analytics.publishedCount
+        )} live, with ${numberFormatter.format(
+          analytics.attentionCount
+        )} items pulling quality down.`
+      : `${numberFormatter.format(analytics.totalProducts)} products in the catalog, ${numberFormatter.format(
+          analytics.publishedCount
+        )} live, and the current structure is holding cleanly.`;
   const coverageItems = [
     {
       label: "Image coverage",
@@ -752,19 +761,23 @@ export default function AnalyticsPage() {
       <section className={styles.hero}>
         <div className={styles.heroCopy}>
           <span className={styles.eyebrow}>Catalog Overview</span>
-          <h1 className={styles.heroTitle}>Catalog analytics.</h1>
+          <h1 className={styles.heroTitle}>Catalog intelligence.</h1>
           <p className={styles.heroText}>
-            Live product, taxonomy, coverage, and readiness signals.
+            {summaryLine}
           </p>
 
           <div className={styles.heroMeta}>
             <span className={styles.metaPill}>
-              <Sparkles size={14} />
-              Live sync
+              <ShieldAlert size={14} />
+              {numberFormatter.format(analytics.attentionCount)} need attention
             </span>
             <span className={styles.metaPill}>
               <PackageCheck size={14} />
               {numberFormatter.format(analytics.totalProducts)} products
+            </span>
+            <span className={styles.metaPill}>
+              <FolderTree size={14} />
+              {leadingCategory?.name ?? "Unmapped"} leads structure
             </span>
             <span className={styles.metaPill}>
               <RefreshCw size={14} />
@@ -963,7 +976,8 @@ export default function AnalyticsPage() {
             <span className={styles.panelEyebrow}>Signal Explorer</span>
             <h2 className={styles.visualTitle}>Chart layers</h2>
             <p className={styles.visualText}>
-              Momentum, structure, and merchandising views load separately to keep the page lighter.
+              Separate chart layers keep the page fast while preserving deeper structure,
+              pricing, and merchandising reads.
             </p>
           </div>
           <div className={styles.visualTabs} role="tablist" aria-label="Analytics views">
@@ -1204,6 +1218,30 @@ export default function AnalyticsPage() {
             )}
           </div>
         </Panel>
+      </section>
+
+      <section className={styles.utilityStrip}>
+        <div className={styles.utilityItem}>
+          <span className={styles.utilityLabel}>Last sync</span>
+          <strong className={styles.utilityValue}>{formatRelativeTime(snapshot.fetchedAt)}</strong>
+          <span className={styles.utilityMeta}>Freshest catalog snapshot in this session</span>
+        </div>
+        <div className={styles.utilityItem}>
+          <span className={styles.utilityLabel}>Dominant price band</span>
+          <strong className={styles.utilityValue}>{leadingPriceBand?.name ?? "Unknown"}</strong>
+          <span className={styles.utilityMeta}>Most populated pricing tier right now</span>
+        </div>
+        <div className={styles.utilityItem}>
+          <span className={styles.utilityLabel}>Export readiness</span>
+          <strong className={styles.utilityValue}>
+            {snapshot.issues.length === 0 ? "Stable" : "Partial"}
+          </strong>
+          <span className={styles.utilityMeta}>
+            {snapshot.issues.length === 0
+              ? "All core catalog sources loaded cleanly."
+              : "Some dependent resources need another refresh."}
+          </span>
+        </div>
       </section>
     </div>
   );

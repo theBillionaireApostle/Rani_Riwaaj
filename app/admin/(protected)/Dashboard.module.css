@@ -1,6 +1,6 @@
 .page {
   display: grid;
-  gap: 1.1rem;
+  gap: 1.35rem;
 }
 
 .hero,
@@ -18,8 +18,8 @@
 .hero {
   display: grid;
   grid-template-columns: minmax(0, 1.12fr) minmax(300px, 0.88fr);
-  gap: 1rem;
-  padding: 1.35rem;
+  gap: 1.1rem;
+  padding: 1.55rem;
   border-radius: 1.5rem;
   background:
     radial-gradient(circle at top right, rgba(37, 99, 235, 0.12), transparent 26%),
@@ -49,7 +49,7 @@
   max-width: 10ch;
   font-family: var(--font-admin-display), var(--font-admin-sans), sans-serif;
   font-size: clamp(2.2rem, 4vw, 3.5rem);
-  font-weight: 700;
+  font-weight: 800;
   line-height: 0.96;
   letter-spacing: -0.05em;
   color: var(--admin-ink);
@@ -78,7 +78,7 @@
 .heroStat {
   display: grid;
   gap: 0.32rem;
-  padding: 1rem;
+  padding: 1.05rem;
   border-radius: 1.1rem;
   border: 1px solid var(--admin-line);
   background: rgba(255, 255, 255, 0.84);
@@ -95,7 +95,7 @@
 .heroStatValue {
   font-family: var(--font-admin-display), var(--font-admin-sans), sans-serif;
   font-size: clamp(1.7rem, 3vw, 2.4rem);
-  font-weight: 700;
+  font-weight: 800;
   line-height: 0.96;
   letter-spacing: -0.04em;
   color: var(--admin-ink);
@@ -131,7 +131,7 @@
 }
 
 .insightCard {
-  padding: 1.15rem;
+  padding: 1.25rem;
   border-radius: 1.3rem;
 }
 
@@ -144,9 +144,10 @@
 
 .insightTitle {
   margin: 0;
-  font-size: 1.04rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
+  font-family: var(--font-admin-display), var(--font-admin-sans), sans-serif;
+  font-size: 1.08rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
   color: var(--admin-ink);
 }
 
@@ -194,7 +195,7 @@
 }
 
 .catalogPanel {
-  padding: 1.2rem;
+  padding: 1.3rem;
   border-radius: 1.4rem;
 }
 
@@ -269,6 +270,7 @@
   padding: 0.82rem 1rem;
   border-radius: 999px;
   font: inherit;
+  font-family: var(--font-admin-sans), Inter, system-ui, sans-serif;
   font-weight: 700;
   cursor: pointer;
   transition:
@@ -284,8 +286,16 @@
 .retryButton {
   border: 0;
   background: linear-gradient(135deg, var(--admin-blue-strong), var(--admin-cyan));
-  color: #ffffff;
+  color: #f8fbff !important;
+  -webkit-text-fill-color: #f8fbff;
   box-shadow: 0 18px 34px rgba(37, 99, 235, 0.2);
+}
+
+.addButton svg,
+.submitButton svg,
+.retryButton svg {
+  color: currentColor;
+  flex: 0 0 auto;
 }
 
 .cancelButton,
@@ -335,6 +345,16 @@
   border: 1px solid var(--admin-line);
   border-radius: 1.2rem;
   background: rgba(255, 255, 255, 0.84);
+  transition:
+    transform 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.productItem:hover {
+  transform: translateY(-1px);
+  border-color: rgba(37, 99, 235, 0.16);
+  box-shadow: 0 18px 32px rgba(15, 23, 42, 0.06);
 }
 
 .productRow {
@@ -361,9 +381,10 @@
 
 .productName {
   margin: 0;
-  font-size: 1.04rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
+  font-family: var(--font-admin-display), var(--font-admin-sans), sans-serif;
+  font-size: 1.08rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
   color: var(--admin-ink);
 }
 

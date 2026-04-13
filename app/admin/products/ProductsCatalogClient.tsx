@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Search } from "lucide-react";
+import { ArrowUpRight, LayoutGrid, Rows3, Search } from "lucide-react";
 import { useDeferredValue, useMemo, useState } from "react";
 
 interface ProductListItem {
@@ -20,6 +20,7 @@ interface ProductsCatalogClientProps {
 }
 
 type StatusFilter = "all" | "published" | "draft";
+type ViewMode = "grid" | "table";
 
 const PAGE_SIZES = [9, 12, 18] as const;
 
@@ -49,6 +50,7 @@ export function ProductsCatalogClient({
 }: ProductsCatalogClientProps) {
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [pageSize, setPageSize] = useState<(typeof PAGE_SIZES)[number]>(12);
   const [page, setPage] = useState(1);
   const deferredQuery = useDeferredValue(query.trim().toLowerCase());
@@ -111,6 +113,40 @@ export function ProductsCatalogClient({
         </div>
 
         <div className="rr-admin-filterRow">
+          <div className="rr-admin-field rr-admin-field--compact">
+            <span className="rr-admin-fieldLabel">View</span>
+            <div className="rr-admin-segmented" role="tablist" aria-label="Catalog view">
+              <button
+                type="button"
+                role="tab"
+                className={
+                  viewMode === "grid"
+                    ? "rr-admin-segmentedButton is-active"
+                    : "rr-admin-segmentedButton"
+                }
+                aria-selected={viewMode === "grid"}
+                onClick={() => setViewMode("grid")}
+              >
+                <LayoutGrid size={16} />
+                Grid
+              </button>
+              <button
+                type="button"
+                role="tab"
+                className={
+                  viewMode === "table"
+                    ? "rr-admin-segmentedButton is-active"
+                    : "rr-admin-segmentedButton"
+                }
+                aria-selected={viewMode === "table"}
+                onClick={() => setViewMode("table")}
+              >
+                <Rows3 size={16} />
+                Table
+              </button>
+            </div>
+          </div>
+
           <label className="rr-admin-field rr-admin-field--compact">
             <span className="rr-admin-fieldLabel">Status</span>
             <select
@@ -176,54 +212,137 @@ export function ProductsCatalogClient({
         </div>
       ) : (
         <>
-          <div className="rr-admin-cardGrid">
-            {paginatedProducts.map((product) => (
-              <article key={product._id} className="rr-admin-productCard">
-                <div className="rr-admin-mediaFrame rr-admin-mediaFrame--compact">
-                  <Image
-                    src={product.defaultImage?.url || "/images/phulkari_bag.webp"}
-                    alt={product.name}
-                    fill
-                    sizes="(max-width: 768px) 100vw, 320px"
-                    style={{ objectFit: "cover" }}
-                  />
-                </div>
-                <div className="rr-admin-productBody">
-                  <div>
-                    <h3 className="rr-admin-listTitle">{product.name}</h3>
-                    <p className="rr-admin-listSubtitle">
-                      {product.desc || "Description pending."}
-                    </p>
+          {viewMode === "grid" ? (
+            <div className="rr-admin-cardGrid">
+              {paginatedProducts.map((product) => (
+                <article key={product._id} className="rr-admin-productCard">
+                  <div className="rr-admin-mediaFrame rr-admin-mediaFrame--compact">
+                    <Image
+                      src={product.defaultImage?.url || "/images/phulkari_bag.webp"}
+                      alt={product.name}
+                      fill
+                      sizes="(max-width: 768px) 100vw, 320px"
+                      style={{ objectFit: "cover" }}
+                    />
                   </div>
+                  <div className="rr-admin-productBody">
+                    <div>
+                      <h3 className="rr-admin-listTitle">{product.name}</h3>
+                      <p className="rr-admin-listSubtitle">
+                        {product.desc || "Description pending."}
+                      </p>
+                    </div>
 
-                  <div className="rr-admin-listMeta">
-                    <span
-                      className={`rr-admin-badge ${
-                        product.published
-                          ? "rr-admin-badge--success"
-                          : "rr-admin-badge--warning"
-                      }`}
-                    >
-                      {product.published ? "Published" : "Draft"}
-                    </span>
-                    {product.badge ? (
-                      <span className="rr-admin-badge rr-admin-badge--info">{product.badge}</span>
-                    ) : null}
-                  </div>
+                    <div className="rr-admin-listMeta">
+                      <span
+                        className={`rr-admin-badge ${
+                          product.published
+                            ? "rr-admin-badge--success"
+                            : "rr-admin-badge--warning"
+                        }`}
+                      >
+                        {product.published ? "Published" : "Draft"}
+                      </span>
+                      {product.badge ? (
+                        <span className="rr-admin-badge rr-admin-badge--info">
+                          {product.badge}
+                        </span>
+                      ) : null}
+                    </div>
 
-                  <div className="rr-admin-productMetaRow">
-                    <strong>₹{parsePrice(product.price).toLocaleString("en-IN")}</strong>
-                    <Link
-                      href={`/admin/products/${product._id}/edit`}
-                      className="rr-admin-button rr-admin-button--secondary"
-                    >
-                      Edit product
-                    </Link>
+                    <div className="rr-admin-productMetaRow">
+                      <strong>₹{parsePrice(product.price).toLocaleString("en-IN")}</strong>
+                      <Link
+                        href={`/admin/products/${product._id}/edit`}
+                        className="rr-admin-button rr-admin-button--secondary"
+                      >
+                        Edit product
+                      </Link>
+                    </div>
                   </div>
-                </div>
-              </article>
-            ))}
-          </div>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <table className="rr-admin-dataTable">
+              <thead>
+                <tr>
+                  <th>Product</th>
+                  <th>Status</th>
+                  <th>Badge</th>
+                  <th>Price</th>
+                  <th aria-label="Actions" />
+                </tr>
+              </thead>
+              <tbody>
+                {paginatedProducts.map((product) => (
+                  <tr key={product._id}>
+                    <td>
+                      <div className="rr-admin-dataMedia">
+                        <div className="rr-admin-dataThumb">
+                          <Image
+                            src={product.defaultImage?.url || "/images/phulkari_bag.webp"}
+                            alt={product.name}
+                            fill
+                            sizes="96px"
+                            style={{ objectFit: "cover" }}
+                          />
+                        </div>
+                        <div className="rr-admin-tableCellStack">
+                          <p className="rr-admin-dataTitle">{product.name}</p>
+                          <p className="rr-admin-dataSubtitle">
+                            {product.desc || "Description pending."}
+                          </p>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <span
+                        className={`rr-admin-badge ${
+                          product.published
+                            ? "rr-admin-badge--success"
+                            : "rr-admin-badge--warning"
+                        }`}
+                      >
+                        {product.published ? "Published" : "Draft"}
+                      </span>
+                    </td>
+                    <td>
+                      {product.badge ? (
+                        <span className="rr-admin-badge rr-admin-badge--info">
+                          {product.badge}
+                        </span>
+                      ) : (
+                        <span className="rr-admin-mutedText">No badge</span>
+                      )}
+                    </td>
+                    <td>
+                      <span className="rr-admin-tableMetric">
+                        ₹{parsePrice(product.price).toLocaleString("en-IN")}
+                      </span>
+                    </td>
+                    <td>
+                      <div className="rr-admin-tableActions">
+                        <Link
+                          href={`/admin/products/${product._id}/edit`}
+                          className="rr-admin-button rr-admin-button--secondary"
+                        >
+                          Edit
+                        </Link>
+                        <Link
+                          href={`/products/${product._id}`}
+                          className="rr-admin-button rr-admin-button--ghost"
+                        >
+                          <ArrowUpRight size={16} />
+                          Preview
+                        </Link>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
 
           <div className="rr-admin-pagination">
             <p className="rr-admin-paginationMeta">

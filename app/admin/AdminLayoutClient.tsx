@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   ArrowUpRight,
   BarChart3,
+  Clock3,
   FolderTree,
   LayoutDashboard,
   LogOut,
@@ -217,6 +218,15 @@ function getSessionLabel(expiresAt: number | null): string {
   return "Session active";
 }
 
+function getInitials(name: string): string {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((segment) => segment[0]?.toUpperCase() ?? "")
+    .join("") || "A";
+}
+
 function getPageMeta(pathname: string): PageMeta {
   return (
     PAGE_META.find((entry) => entry.test(pathname))?.value ?? {
@@ -291,6 +301,7 @@ export default function AdminLayoutClient({
   }
 
   const sessionLabel = getSessionLabel(identity.expiresAt);
+  const initials = getInitials(identity.name);
 
   return (
     <div className="rr-admin-root">
@@ -314,12 +325,22 @@ export default function AdminLayoutClient({
             </button>
           </div>
 
-          <div className="rr-admin-sidebarMeta">
-            <span className="rr-admin-sidebarEyebrow">Signed in as</span>
-            <strong>{identity.name}</strong>
-            <p>{identity.role}</p>
+          <div className="rr-admin-userCard">
+            <div className="rr-admin-userAvatar" aria-hidden="true">
+              {initials}
+            </div>
+            <div className="rr-admin-userCopy">
+              <span className="rr-admin-sidebarEyebrow">Authenticated</span>
+              <strong>{identity.name}</strong>
+              <p>{identity.role}</p>
+              <div className="rr-admin-sessionInline">
+                <span className="rr-admin-statusDot" aria-hidden="true" />
+                <small>{sessionLabel}</small>
+              </div>
+            </div>
           </div>
 
+          <div className="rr-admin-sidebarSectionLabel">Workspace</div>
           <nav className="rr-admin-nav" aria-label="Admin navigation">
             {NAV_ITEMS.map(({ href, icon: Icon, label, matcher }) => {
               const isActive = matcher(pathname);
@@ -339,12 +360,15 @@ export default function AdminLayoutClient({
 
           <div className="rr-admin-sidebarFooter">
             <div className="rr-admin-sessionCard">
-              <span>{sessionLabel}</span>
-              <small>{formatNow(now)}</small>
+              <div className="rr-admin-sessionTitleRow">
+                <span className="rr-admin-statusDot" aria-hidden="true" />
+                <span>{sessionLabel}</span>
+              </div>
+              <small>Secure access · {formatNow(now)}</small>
             </div>
             <button
               type="button"
-              className="rr-admin-button rr-admin-button--ghost rr-admin-button--block"
+              className="rr-admin-button rr-admin-button--dangerSoft rr-admin-button--block"
               onClick={() => {
                 clearAdminSession();
                 startTransition(() => router.push("/admin/login"));
@@ -378,20 +402,28 @@ export default function AdminLayoutClient({
               </button>
               <div className="rr-admin-topbarCopy">
                 <span className="rr-admin-kicker">{pageMeta.kicker}</span>
-                <div className="rr-admin-breadcrumb">
-                  <span>Admin</span>
-                  <span>/</span>
-                  <span>{pageMeta.label}</span>
-                </div>
-                <span className="rr-admin-mutedText">{pageMeta.description}</span>
+                <p className="rr-admin-topbarTitle">{pageMeta.label}</p>
+                <span className="rr-admin-topbarDescription">{pageMeta.description}</span>
               </div>
             </div>
 
             <div className="rr-admin-topbarAside">
-              <div className="rr-admin-chipGroup">
-                <span className="rr-admin-chip">{identity.role}</span>
-                <span className="rr-admin-chip">{sessionLabel}</span>
-                <span className="rr-admin-chip rr-admin-chip--muted">
+              <div className="rr-admin-topbarStatus">
+                <span className="rr-admin-chip rr-admin-chip--status">
+                  <span className="rr-admin-statusDot" aria-hidden="true" />
+                  {sessionLabel}
+                </span>
+                <span className="rr-admin-identityPill">
+                  <span className="rr-admin-identityAvatar" aria-hidden="true">
+                    {initials}
+                  </span>
+                  <span className="rr-admin-identityCopy">
+                    <strong>{identity.name}</strong>
+                    <small>{identity.role}</small>
+                  </span>
+                </span>
+                <span className="rr-admin-timeLabel">
+                  <Clock3 size={14} />
                   {formatNow(now)}
                 </span>
               </div>

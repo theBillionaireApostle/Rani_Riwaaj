@@ -1,12 +1,61 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Eye, EyeOff, Loader2, LockKeyhole, ShieldCheck } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  Clock3,
+  Eye,
+  EyeOff,
+  Laptop2,
+  Loader2,
+  LockKeyhole,
+  ShieldCheck,
+} from "lucide-react";
 import { toast } from "react-toastify";
 import { getErrorMessage } from "@/lib/error-utils";
 
 interface ChangePasswordResponse {
   message?: string;
+}
+
+interface SessionInfo {
+  expiresAt: number | null;
+  name: string;
+  role: string;
+}
+
+function decodeSession(): SessionInfo | null {
+  if (typeof window === "undefined") return null;
+  const token = localStorage.getItem("admin_jwt");
+  if (!token) return null;
+
+  try {
+    const [, payload] = token.split(".");
+    if (!payload) return null;
+    const parsed = JSON.parse(atob(payload.replace(/-/g, "+").replace(/_/g, "/"))) as {
+      exp?: number;
+      name?: string;
+      role?: string;
+      username?: string;
+      email?: string;
+    };
+
+    return {
+      expiresAt: parsed.exp ? parsed.exp * 1000 : null,
+      name: parsed.name ?? parsed.username ?? parsed.email?.split("@")[0] ?? "Admin",
+      role: parsed.role ?? "Admin",
+    };
+  } catch {
+    return null;
+  }
+}
+
+function formatSessionTime(value: number | null): string {
+  if (!value) return "No expiry data";
+
+  return new Intl.DateTimeFormat("en-IN", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(value));
 }
 
 export default function SettingsPage() {
@@ -17,9 +66,14 @@ export default function SettingsPage() {
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [sessionInfo, setSessionInfo] = useState<SessionInfo | null>(null);
+
+  useEffect(() => {
+    setSessionInfo(decodeSession());
+  }, []);
 
   const passwordStrength = useMemo(() => {
-    if (!newPassword) return "Waiting";
+    if (!newPassword) return "Idle";
     if (newPassword.length < 8) return "Weak";
     if (newPassword.length < 12) return "Good";
     return "Strong";
@@ -120,6 +174,9 @@ export default function SettingsPage() {
                   {showCurrent ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
+              <span className="rr-admin-fieldHint">
+                Use the current admin password tied to this secure session.
+              </span>
             </label>
 
             <label className="rr-admin-field">
@@ -140,6 +197,9 @@ export default function SettingsPage() {
                   {showNew ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
+              <span className="rr-admin-fieldHint">
+                Use at least 12 characters for stronger admin access.
+              </span>
             </label>
 
             <label className="rr-admin-field">
@@ -160,6 +220,9 @@ export default function SettingsPage() {
                   {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
+              <span className="rr-admin-fieldHint">
+                Re-enter the new password exactly to prevent lockout.
+              </span>
             </label>
 
             <div className="rr-admin-formActions">
@@ -186,7 +249,7 @@ export default function SettingsPage() {
             <div>
               <h2 className="rr-admin-panelTitle">Security guidance</h2>
               <p className="rr-admin-panelText">
-                Keep admin access clean and controlled.
+                Keep admin access clean, rotated, and limited to trusted devices.
               </p>
             </div>
             <ShieldCheck size={18} />
@@ -198,7 +261,7 @@ export default function SettingsPage() {
                 <div>
                   <h3 className="rr-admin-listTitle">Use unique credentials</h3>
                   <p className="rr-admin-listSubtitle">
-                    Avoid reusing passwords from personal or shared accounts.
+                    Avoid reusing passwords from personal, shared, or storefront accounts.
                   </p>
                 </div>
                 <LockKeyhole size={18} />
@@ -210,7 +273,8 @@ export default function SettingsPage() {
                 <div>
                   <h3 className="rr-admin-listTitle">Rotate after access changes</h3>
                   <p className="rr-admin-listSubtitle">
-                    Update credentials whenever staff access changes or devices are replaced.
+                    Update credentials whenever staff access changes, devices are replaced,
+                    or admin access is delegated.
                   </p>
                 </div>
                 <ShieldCheck size={18} />
@@ -220,9 +284,120 @@ export default function SettingsPage() {
             <div className="rr-admin-listItem">
               <div className="rr-admin-listHeader">
                 <div>
-                  <h3 className="rr-admin-listTitle">Keep sessions clean</h3>
+                  <h3 className="rr-admin-listTitle">Keep sessions device-bound</h3>
                   <p className="rr-admin-listSubtitle">
-                    Sign out after admin work on shared devices and browsers.
+                    Sign out after admin work on shared browsers and avoid leaving the panel open
+                    on public networks.
+                  </p>
+                </div>
+                <Eye size={18} />
+              </div>
+            </div>
+          </div>
+        </article>
+      </div>
+
+      <div className="rr-admin-grid rr-admin-grid--3">
+        <article className="rr-admin-panel">
+          <div className="rr-admin-panelHeader">
+            <div>
+              <h2 className="rr-admin-panelTitle">Active session</h2>
+              <p className="rr-admin-panelText">
+                Current admin identity and secure session timing.
+              </p>
+            </div>
+            <Laptop2 size={18} />
+          </div>
+          <div className="rr-admin-grid">
+            <div className="rr-admin-listItem">
+              <div className="rr-admin-listHeader">
+                <div>
+                  <h3 className="rr-admin-listTitle">{sessionInfo?.name ?? "Admin"}</h3>
+                  <p className="rr-admin-listSubtitle">{sessionInfo?.role ?? "Authenticated"}</p>
+                </div>
+                <span className="rr-admin-badge rr-admin-badge--success">Live</span>
+              </div>
+            </div>
+            <div className="rr-admin-listItem">
+              <div className="rr-admin-listHeader">
+                <div>
+                  <h3 className="rr-admin-listTitle">Session expiry</h3>
+                  <p className="rr-admin-listSubtitle">
+                    {formatSessionTime(sessionInfo?.expiresAt ?? null)}
+                  </p>
+                </div>
+                <Clock3 size={18} />
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article className="rr-admin-panel">
+          <div className="rr-admin-panelHeader">
+            <div>
+              <h2 className="rr-admin-panelTitle">Password posture</h2>
+              <p className="rr-admin-panelText">
+                Current draft quality and minimum security target.
+              </p>
+            </div>
+            <LockKeyhole size={18} />
+          </div>
+          <div className="rr-admin-grid">
+            <div className="rr-admin-listItem">
+              <div className="rr-admin-listHeader">
+                <div>
+                  <h3 className="rr-admin-listTitle">Strength state</h3>
+                  <p className="rr-admin-listSubtitle">
+                    {passwordStrength === "Idle"
+                      ? "No new password entered yet."
+                      : `${passwordStrength} draft based on current input.`}
+                  </p>
+                </div>
+                <span className="rr-admin-badge rr-admin-badge--info">{passwordStrength}</span>
+              </div>
+            </div>
+            <div className="rr-admin-listItem">
+              <div className="rr-admin-listHeader">
+                <div>
+                  <h3 className="rr-admin-listTitle">Recommended baseline</h3>
+                  <p className="rr-admin-listSubtitle">
+                    12+ characters with mixed words, symbols, and no reused phrases.
+                  </p>
+                </div>
+                <ShieldCheck size={18} />
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article className="rr-admin-panel">
+          <div className="rr-admin-panelHeader">
+            <div>
+              <h2 className="rr-admin-panelTitle">Recovery posture</h2>
+              <p className="rr-admin-panelText">
+                Practical actions to keep admin access controlled.
+              </p>
+            </div>
+            <ShieldCheck size={18} />
+          </div>
+          <div className="rr-admin-grid">
+            <div className="rr-admin-listItem">
+              <div className="rr-admin-listHeader">
+                <div>
+                  <h3 className="rr-admin-listTitle">After team changes</h3>
+                  <p className="rr-admin-listSubtitle">
+                    Rotate the admin password immediately after any access transfer.
+                  </p>
+                </div>
+                <ShieldCheck size={18} />
+              </div>
+            </div>
+            <div className="rr-admin-listItem">
+              <div className="rr-admin-listHeader">
+                <div>
+                  <h3 className="rr-admin-listTitle">On shared devices</h3>
+                  <p className="rr-admin-listSubtitle">
+                    Sign out once work is complete and avoid saving credentials in the browser.
                   </p>
                 </div>
                 <Eye size={18} />

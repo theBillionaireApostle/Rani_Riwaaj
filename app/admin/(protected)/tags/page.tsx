@@ -11,6 +11,11 @@ interface Tag {
   slug: string;
 }
 
+interface ProductRecord {
+  _id: string;
+  tags?: string[];
+}
+
 const BACKEND_BASE =
   process.env.NEXT_PUBLIC_BACKEND_URL ||
   "https://rani-riwaaj-backend-ylbq.vercel.app";
@@ -25,6 +30,7 @@ function slugify(value: string) {
 
 export default function TagsPage() {
   const [tags, setTags] = useState<Tag[]>([]);
+  const [products, setProducts] = useState<ProductRecord[]>([]);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [loadingTags, setLoadingTags] = useState(true);
@@ -32,6 +38,8 @@ export default function TagsPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [current, setCurrent] = useState<Partial<Tag>>({});
   const [loading, setLoading] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Tag | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState("");
 
   const perPage = 10;
@@ -39,10 +47,21 @@ export default function TagsPage() {
   const fetchTags = useCallback(async () => {
     setLoadingTags(true);
     try {
-      const response = await fetch(`${BACKEND_BASE}/api/tags`);
-      if (!response.ok) throw new Error("Failed to load tags.");
-      const data: Tag[] = await response.json();
-      setTags(data);
+      const [tagsResponse, productsResponse] = await Promise.all([
+        fetch(`${BACKEND_BASE}/api/tags`),
+        fetch(`${BACKEND_BASE}/api/products`),
+      ]);
+
+      if (!tagsResponse.ok) throw new Error("Failed to load tags.");
+      if (!productsResponse.ok) throw new Error("Failed to load products.");
+
+      const [tagsData, productsData]: [Tag[], ProductRecord[]] = await Promise.all([
+        tagsResponse.json(),
+        productsResponse.json(),
+      ]);
+
+      setTags(tagsData);
+      setProducts(productsData);
     } catch (err: unknown) {
       toast.error(getErrorMessage(err, "Unable to load tags."));
     } finally {
@@ -65,10 +84,23 @@ export default function TagsPage() {
     [tags, search]
   );
 
+  const usageByTag = useMemo(() => {
+    const usage = new Map<string, number>();
+
+    products.forEach((product) => {
+      product.tags?.forEach((tagId) => {
+        usage.set(tagId, (usage.get(tagId) ?? 0) + 1);
+      });
+    });
+
+    return usage;
+  }, [products]);
+
   const totalPages = Math.max(1, Math.ceil(filteredTags.length / perPage));
+  const currentPage = Math.min(page, totalPages);
   const visibleTags = useMemo(
-    () => filteredTags.slice((page - 1) * perPage, page * perPage),
-    [filteredTags, page]
+    () => filteredTags.slice((currentPage - 1) * perPage, currentPage * perPage),
+    [currentPage, filteredTags]
   );
 
   const openAdd = () => {
@@ -130,11 +162,11 @@ export default function TagsPage() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Delete this tag?")) return;
-
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
     try {
-      const response = await fetch(`${BACKEND_BASE}/api/tags/${id}`, {
+      const response = await fetch(`${BACKEND_BASE}/api/tags/${deleteTarget._id}`, {
         method: "DELETE",
       });
 
@@ -143,9 +175,12 @@ export default function TagsPage() {
       }
 
       toast.success("Tag deleted.");
+      setDeleteTarget(null);
       fetchTags();
     } catch (err: unknown) {
       toast.error(getErrorMessage(err, "Delete failed."));
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -183,14 +218,18 @@ export default function TagsPage() {
           <span className="rr-admin-statMeta">Matching the active search filter.</span>
         </article>
         <article className="rr-admin-statCard">
-          <span className="rr-admin-statLabel">Page size</span>
-          <strong className="rr-admin-statValue">{perPage}</strong>
-          <span className="rr-admin-statMeta">Tags shown per page in this view.</span>
+          <span className="rr-admin-statLabel">Linked products</span>
+          <strong className="rr-admin-statValue">
+            {Array.from(usageByTag.values()).reduce((sum, value) => sum + value, 0)}
+          </strong>
+          <span className="rr-admin-statMeta">Total product-tag relationships currently mapped.</span>
         </article>
         <article className="rr-admin-statCard">
-          <span className="rr-admin-statLabel">Pages</span>
-          <strong className="rr-admin-statValue">{totalPages}</strong>
-          <span className="rr-admin-statMeta">Current pagination depth.</span>
+          <span className="rr-admin-statLabel">Unused tags</span>
+          <strong className="rr-admin-statValue">
+            {tags.filter((tag) => (usageByTag.get(tag._id) ?? 0) === 0).length}
+          </strong>
+          <span className="rr-admin-statMeta">Tags not currently assigned to products.</span>
         </article>
       </div>
 
@@ -239,56 +278,83 @@ export default function TagsPage() {
             </p>
           </div>
         ) : (
-          <ul className="rr-admin-list">
-            {visibleTags.map((tag) => (
-              <li key={tag._id} className="rr-admin-listItem">
-                <div className="rr-admin-listHeader">
-                  <div>
-                    <h2 className="rr-admin-listTitle">{tag.name}</h2>
-                    <p className="rr-admin-listSubtitle">/{tag.slug}</p>
-                  </div>
-                  <span className="rr-admin-badge rr-admin-badge--info">Tag</span>
-                </div>
+          <table className="rr-admin-dataTable">
+            <thead>
+              <tr>
+                <th>Tag</th>
+                <th>Slug</th>
+                <th>Usage</th>
+                <th>State</th>
+                <th aria-label="Actions" />
+              </tr>
+            </thead>
+            <tbody>
+              {visibleTags.map((tag) => {
+                const usageCount = usageByTag.get(tag._id) ?? 0;
 
-                <div className="rr-admin-listMeta">
-                  <span className="rr-admin-mutedText">
-                    Use this tag for product grouping, storefront filters, and analytics
-                    context.
-                  </span>
-                </div>
-
-                <div className="rr-admin-listActions">
-                  <button
-                    type="button"
-                    className="rr-admin-button rr-admin-button--secondary"
-                    onClick={() => openEdit(tag)}
-                  >
-                    <Edit2 size={16} />
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    className="rr-admin-button rr-admin-button--danger"
-                    onClick={() => handleDelete(tag._id)}
-                  >
-                    <Trash2 size={16} />
-                    Delete
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
+                return (
+                  <tr key={tag._id}>
+                    <td>
+                      <div className="rr-admin-tableCellStack">
+                        <p className="rr-admin-dataTitle">{tag.name}</p>
+                        <p className="rr-admin-dataSubtitle">
+                          Used for storefront grouping and analytics context.
+                        </p>
+                      </div>
+                    </td>
+                    <td>
+                      <span className="rr-admin-mutedText">/{tag.slug}</span>
+                    </td>
+                    <td>
+                      <span className="rr-admin-tableMetric">{usageCount}</span>
+                    </td>
+                    <td>
+                      <span
+                        className={`rr-admin-badge ${
+                          usageCount > 0
+                            ? "rr-admin-badge--success"
+                            : "rr-admin-badge--warning"
+                        }`}
+                      >
+                        {usageCount > 0 ? "Active" : "Unused"}
+                      </span>
+                    </td>
+                    <td>
+                      <div className="rr-admin-tableActions">
+                        <button
+                          type="button"
+                          className="rr-admin-button rr-admin-button--secondary"
+                          onClick={() => openEdit(tag)}
+                        >
+                          <Edit2 size={16} />
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          className="rr-admin-button rr-admin-button--dangerSoft"
+                          onClick={() => setDeleteTarget(tag)}
+                        >
+                          <Trash2 size={16} />
+                          Remove
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         )}
 
         <div className="rr-admin-toolbar">
           <span className="rr-admin-mutedText">
-            Page {page} of {totalPages}
+            Page {currentPage} of {totalPages}
           </span>
           <div className="rr-admin-actions">
             <button
               type="button"
               className="rr-admin-button rr-admin-button--secondary"
-              disabled={page <= 1}
+              disabled={currentPage <= 1}
               onClick={() => setPage((currentPage) => currentPage - 1)}
             >
               Previous
@@ -296,7 +362,7 @@ export default function TagsPage() {
             <button
               type="button"
               className="rr-admin-button rr-admin-button--secondary"
-              disabled={page >= totalPages}
+              disabled={currentPage >= totalPages}
               onClick={() => setPage((currentPage) => currentPage + 1)}
             >
               Next
@@ -378,6 +444,49 @@ export default function TagsPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      ) : null}
+
+      {deleteTarget ? (
+        <div className="rr-admin-modalBackdrop">
+          <div className="rr-admin-modal">
+            <div className="rr-admin-modalHeader">
+              <div>
+                <h2 className="rr-admin-modalTitle">Delete tag</h2>
+                <p className="rr-admin-panelText">
+                  Remove <strong>{deleteTarget.name}</strong> from the taxonomy. Products using
+                  this tag may lose grouping context.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="rr-admin-iconButton"
+                onClick={() => setDeleteTarget(null)}
+                disabled={deleting}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="rr-admin-modalActions">
+              <button
+                type="button"
+                className="rr-admin-button rr-admin-button--ghost"
+                onClick={() => setDeleteTarget(null)}
+                disabled={deleting}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="rr-admin-button rr-admin-button--danger"
+                onClick={() => void handleDelete()}
+                disabled={deleting}
+              >
+                {deleting ? "Deleting..." : "Delete tag"}
+              </button>
+            </div>
           </div>
         </div>
       ) : null}
