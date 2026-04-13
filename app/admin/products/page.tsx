@@ -1,5 +1,5 @@
-import Image from "next/image";
 import Link from "next/link";
+import { ProductsCatalogClient } from "./ProductsCatalogClient";
 
 interface ProductListItem {
   _id: string;
@@ -14,11 +14,6 @@ interface ProductListItem {
 const BACKEND_BASE =
   process.env.NEXT_PUBLIC_SITE_URL ||
   "https://rani-riwaaj-backend-ylbq.vercel.app/";
-
-function parsePrice(value: string | number) {
-  if (typeof value === "number") return value;
-  return Number.parseFloat(String(value).replace(/[^\d.]/g, "")) || 0;
-}
 
 async function getProducts(): Promise<ProductListItem[]> {
   const response = await fetch(new URL("/api/products", BACKEND_BASE).toString(), {
@@ -37,7 +32,14 @@ export default async function AdminProductsPage() {
   const published = products.filter((product) => product.published).length;
   const averagePrice = products.length
     ? Math.round(
-        products.reduce((sum, product) => sum + parsePrice(product.price), 0) / products.length
+        products.reduce((sum, product) => {
+          const value =
+            typeof product.price === "number"
+              ? product.price
+              : Number.parseFloat(String(product.price).replace(/[^\d.]/g, "")) || 0;
+
+          return sum + value;
+        }, 0) / products.length
       )
     : 0;
   const withImages = products.filter((product) => product.defaultImage?.url).length;
@@ -85,72 +87,7 @@ export default async function AdminProductsPage() {
         </article>
       </div>
 
-      <div className="rr-admin-panel">
-        <div className="rr-admin-panelHeader">
-          <div>
-            <h2 className="rr-admin-panelTitle">Catalog list</h2>
-            <p className="rr-admin-panelText">
-              Product list with direct edit access.
-            </p>
-          </div>
-        </div>
-
-        {products.length === 0 ? (
-          <div className="rr-admin-emptyState">
-            <strong>No products found</strong>
-            <p>Create the first product to start building the collection.</p>
-          </div>
-        ) : (
-          <div className="rr-admin-cardGrid">
-            {products.map((product) => (
-              <article key={product._id} className="rr-admin-productCard">
-                <div className="rr-admin-mediaFrame rr-admin-mediaFrame--compact">
-                  <Image
-                    src={product.defaultImage?.url || "/images/phulkari_bag.webp"}
-                    alt={product.name}
-                    fill
-                    sizes="(max-width: 768px) 100vw, 320px"
-                    style={{ objectFit: "cover" }}
-                  />
-                </div>
-                <div className="rr-admin-productBody">
-                  <div>
-                    <h3 className="rr-admin-listTitle">{product.name}</h3>
-                    <p className="rr-admin-listSubtitle">
-                      {product.desc || "Description pending."}
-                    </p>
-                  </div>
-
-                  <div className="rr-admin-listMeta">
-                    <span
-                      className={`rr-admin-badge ${
-                        product.published
-                          ? "rr-admin-badge--success"
-                          : "rr-admin-badge--warning"
-                      }`}
-                    >
-                      {product.published ? "Published" : "Draft"}
-                    </span>
-                    {product.badge ? (
-                      <span className="rr-admin-badge rr-admin-badge--info">{product.badge}</span>
-                    ) : null}
-                  </div>
-
-                  <div className="rr-admin-productMetaRow">
-                    <strong>₹{parsePrice(product.price).toLocaleString("en-IN")}</strong>
-                    <Link
-                      href={`/admin/products/${product._id}/edit`}
-                      className="rr-admin-button rr-admin-button--secondary"
-                    >
-                      Edit product
-                    </Link>
-                  </div>
-                </div>
-              </article>
-            ))}
-          </div>
-        )}
-      </div>
+      <ProductsCatalogClient products={products} />
     </section>
   );
 }

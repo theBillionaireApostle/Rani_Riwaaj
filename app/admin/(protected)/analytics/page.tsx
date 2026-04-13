@@ -1,30 +1,15 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import {
+  type CSSProperties,
   useCallback,
   useEffect,
   useMemo,
   useState,
   useTransition,
 } from "react";
-import {
-  Area,
-  AreaChart,
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  Pie,
-  PieChart,
-  PolarAngleAxis,
-  RadialBar,
-  RadialBarChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
 import {
   AlertTriangle,
   ArrowRight,
@@ -38,10 +23,17 @@ import {
   Tags,
 } from "lucide-react";
 import styles from "./analytics.module.css";
+import type { AnalyticsTab } from "./AnalyticsVisuals";
 import { getErrorMessage } from "@/lib/error-utils";
 
 const BACKEND_BASE = "https://rani-riwaaj-backend-ylbq.vercel.app";
-const CHART_COLORS = ["#2563eb", "#06b6d4", "#7c3aed", "#0f9f73", "#ef4444"];
+const AnalyticsVisuals = dynamic(
+  () => import("./AnalyticsVisuals").then((module) => module.AnalyticsVisuals),
+  {
+    ssr: false,
+    loading: () => <VisualsLoadingState />,
+  }
+);
 
 const currencyFormatter = new Intl.NumberFormat("en-IN", {
   style: "currency",
@@ -317,6 +309,10 @@ export default function AnalyticsPage() {
   });
   const [loading, setLoading] = useState(true);
   const [isRefreshing, startRefresh] = useTransition();
+  const [activeTab, setActiveTab] = useState<AnalyticsTab>("momentum");
+  const [attentionPage, setAttentionPage] = useState(1);
+  const [recentPage, setRecentPage] = useState(1);
+  const [tagPage, setTagPage] = useState(1);
 
   const refreshAnalytics = useCallback(async () => {
     setLoading(true);
@@ -371,7 +367,6 @@ export default function AnalyticsPage() {
     const categoryIndexAvailable = categories.length > 0;
     const tagIndexAvailable = tags.length > 0;
     const categoryMap = new Map(categories.map((category) => [category._id, category.name]));
-    const tagMap = new Map(tags.map((tag) => [tag._id, tag.name]));
 
     const totalProducts = products.length;
     const publishedProducts = products.filter((product) => product.published);
@@ -563,8 +558,7 @@ export default function AnalyticsPage() {
           return right.reasons.length - left.reasons.length;
         }
         return right.price - left.price;
-      })
-      .slice(0, 5);
+      });
 
     const orphanCategories = categories.filter(
       (category) => !products.some((product) => product.category === category._id)
@@ -575,8 +569,7 @@ export default function AnalyticsPage() {
         const leftTime = left.createdAt ? new Date(left.createdAt).getTime() : 0;
         const rightTime = right.createdAt ? new Date(right.createdAt).getTime() : 0;
         return rightTime - leftTime;
-      })
-      .slice(0, 5);
+      });
 
     const tagUsage = tags
       .map((tag) => ({
@@ -623,8 +616,6 @@ export default function AnalyticsPage() {
       orphanCategories,
       recentProducts,
       tagUsage,
-      categoryMap,
-      tagMap,
     };
   }, [snapshot]);
 
@@ -715,6 +706,9 @@ export default function AnalyticsPage() {
       tone: "gold" as Tone,
     },
   ];
+  const attentionView = getPageWindow(analytics.attentionProducts, attentionPage, 3);
+  const recentView = getPageWindow(analytics.recentProducts, recentPage, 4);
+  const tagView = getPageWindow(analytics.tagUsage, tagPage, 5);
 
   if (loading && snapshot.fetchedAt === null) {
     return <LoadingState />;
@@ -887,37 +881,7 @@ export default function AnalyticsPage() {
         >
           <div className={styles.storyScoreRow}>
             <div className={styles.storyGaugeBlock}>
-              <div className={styles.storyGauge}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <RadialBarChart
-                    data={[{ value: readinessScore }]}
-                    innerRadius="68%"
-                    outerRadius="100%"
-                    startAngle={90}
-                    endAngle={-270}
-                    barSize={16}
-                  >
-                    <PolarAngleAxis
-                      type="number"
-                      domain={[0, 100]}
-                      tick={false}
-                    />
-                    <RadialBar
-                      dataKey="value"
-                      cornerRadius={999}
-                      background={{ fill: "rgba(23, 32, 51, 0.08)" }}
-                      fill="#2563eb"
-                    />
-                  </RadialBarChart>
-                </ResponsiveContainer>
-                <div className={styles.storyGaugeCenter}>
-                  <div className={styles.storyScoreValue}>
-                    {readinessScore}
-                    <span>/100</span>
-                  </div>
-                  <p className={styles.storyScoreCaption}>Readiness</p>
-                </div>
-              </div>
+              <ReadinessDial value={readinessScore} />
             </div>
             <div className={styles.storyMiniGrid}>
               <MiniMetric
@@ -993,212 +957,49 @@ export default function AnalyticsPage() {
         </StoryCard>
       </section>
 
-      <section className={styles.grid}>
-        <Panel
-          tone="teal"
-          eyebrow="Momentum"
-          title="Catalog growth over time"
-          subtitle="Products added by month with live and draft split."
-        >
-          {analytics.timeline.length === 0 ? (
-            <EmptyPlot message="No valid creation dates are available yet." />
-          ) : analytics.timeline.length < 2 ? (
-            <LowDataState latest={analytics.timeline[analytics.timeline.length - 1]} />
-          ) : (
-            <ChartShell>
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={analytics.timeline} margin={{ top: 10, right: 10, left: -12, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="growthGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#2563eb" stopOpacity={0.38} />
-                      <stop offset="100%" stopColor="#2563eb" stopOpacity={0.04} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="label" tickLine={false} axisLine={false} />
-                  <YAxis allowDecimals={false} tickLine={false} axisLine={false} />
-                  <Tooltip />
-                  <Area
-                    type="monotone"
-                    dataKey="added"
-                    stroke="#2563eb"
-                    fill="url(#growthGradient)"
-                    strokeWidth={3}
-                    name="Added"
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="published"
-                    stroke="#06b6d4"
-                    fill="transparent"
-                    strokeWidth={2}
-                    name="Published"
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </ChartShell>
-          )}
-        </Panel>
+      <section className={styles.visualSection}>
+        <div className={styles.visualHeader}>
+          <div className={styles.visualCopy}>
+            <span className={styles.panelEyebrow}>Signal Explorer</span>
+            <h2 className={styles.visualTitle}>Chart layers</h2>
+            <p className={styles.visualText}>
+              Momentum, structure, and merchandising views load separately to keep the page lighter.
+            </p>
+          </div>
+          <div className={styles.visualTabs} role="tablist" aria-label="Analytics views">
+            {[
+              { key: "momentum", label: "Momentum" },
+              { key: "structure", label: "Structure" },
+              { key: "merchandising", label: "Merchandising" },
+            ].map((tab) => (
+              <button
+                key={tab.key}
+                type="button"
+                role="tab"
+                aria-selected={activeTab === tab.key}
+                className={
+                  activeTab === tab.key
+                    ? `${styles.visualTab} ${styles.visualTabActive}`
+                    : styles.visualTab
+                }
+                onClick={() => setActiveTab(tab.key as AnalyticsTab)}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
 
-        <Panel
-          tone="orange"
-          eyebrow="Publishing"
-          title="Live vs draft split"
-          subtitle="Current live and draft balance."
-        >
-          {analytics.publicationSplit.length === 0 ? (
-            <EmptyPlot message="No publication status data is available." />
-          ) : (
-            <ChartShell>
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={analytics.publicationSplit}
-                    dataKey="value"
-                    nameKey="name"
-                    innerRadius={62}
-                    outerRadius={94}
-                    paddingAngle={4}
-                  >
-                    {analytics.publicationSplit.map((entry, index) => (
-                      <Cell
-                        key={entry.name}
-                        fill={index === 0 ? "#2563eb" : "#06b6d4"}
-                      />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    formatter={(value: number) => numberFormatter.format(value)}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            </ChartShell>
-          )}
-        </Panel>
-
-        <Panel
-          tone="gold"
-          eyebrow="Taxonomy"
-          title="Category mix"
-          subtitle="Distribution across mapped categories."
-        >
-          {analytics.categoryMix.length === 0 ? (
-            <EmptyPlot message="Add category assignments to unlock category analysis." />
-          ) : (
-            <ChartShell>
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={analytics.categoryMix}
-                  layout="vertical"
-                  margin={{ top: 6, right: 12, left: 12, bottom: 0 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                  <XAxis type="number" allowDecimals={false} tickLine={false} axisLine={false} />
-                  <YAxis
-                    type="category"
-                    dataKey="name"
-                    width={92}
-                    tickLine={false}
-                    axisLine={false}
-                  />
-                  <Tooltip
-                    formatter={(value: number) => numberFormatter.format(value)}
-                  />
-                  <Bar dataKey="count" radius={[0, 12, 12, 0]} fill="#16233b" />
-                </BarChart>
-              </ResponsiveContainer>
-            </ChartShell>
-          )}
-        </Panel>
-
-        <Panel
-          tone="rose"
-          eyebrow="Pricing"
-          title="Price architecture"
-          subtitle="Distribution by price band."
-        >
-          <ChartShell>
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={analytics.priceBands} margin={{ top: 6, right: 6, left: -12, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="name" tickLine={false} axisLine={false} />
-                <YAxis allowDecimals={false} tickLine={false} axisLine={false} />
-                <Tooltip formatter={(value: number) => numberFormatter.format(value)} />
-                <Bar dataKey="value" radius={[12, 12, 0, 0]} fill="#14b8a6" />
-              </BarChart>
-            </ResponsiveContainer>
-          </ChartShell>
-        </Panel>
-
-        <Panel
-          tone="plum"
-          eyebrow="Quality"
-          title="Catalog readiness"
-          subtitle="Scored on media, description, category, pricing, and tags or variants."
-        >
-          {analytics.qualityBreakdown.length === 0 ? (
-            <EmptyPlot message="Quality scoring becomes available as products are added." />
-          ) : (
-            <ChartShell>
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={analytics.qualityBreakdown} margin={{ top: 6, right: 6, left: -12, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="name" tickLine={false} axisLine={false} />
-                  <YAxis allowDecimals={false} tickLine={false} axisLine={false} />
-                  <Tooltip formatter={(value: number) => numberFormatter.format(value)} />
-                  <Bar dataKey="value" radius={[12, 12, 0, 0]}>
-                    {analytics.qualityBreakdown.map((entry, index) => (
-                      <Cell
-                        key={entry.name}
-                        fill={CHART_COLORS[index % CHART_COLORS.length]}
-                      />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </ChartShell>
-          )}
-        </Panel>
-
-        <Panel
-          tone="slate"
-          eyebrow="Merchandising"
-          title="Top value products"
-          subtitle="Highest priced products in the current catalog."
-        >
-          {analytics.topValueProducts.length === 0 ? (
-            <EmptyPlot message="No price data is available yet." />
-          ) : (
-            <ChartShell>
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={analytics.topValueProducts}
-                  layout="vertical"
-                  margin={{ top: 6, right: 12, left: 12, bottom: 0 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                  <XAxis
-                    type="number"
-                    tickLine={false}
-                    axisLine={false}
-                    tickFormatter={(value) => `₹${value / 1000}k`}
-                  />
-                  <YAxis
-                    type="category"
-                    dataKey="name"
-                    width={118}
-                    tickLine={false}
-                    axisLine={false}
-                  />
-                  <Tooltip
-                    formatter={(value: number) => formatCurrency(value)}
-                  />
-                  <Bar dataKey="value" radius={[0, 12, 12, 0]} fill="#7c3aed" />
-                </BarChart>
-              </ResponsiveContainer>
-            </ChartShell>
-          )}
-        </Panel>
+        <AnalyticsVisuals
+          activeTab={activeTab}
+          timeline={analytics.timeline}
+          publicationSplit={analytics.publicationSplit}
+          categoryMix={analytics.categoryMix}
+          priceBands={analytics.priceBands}
+          qualityBreakdown={analytics.qualityBreakdown}
+          topValueProducts={analytics.topValueProducts}
+          tagUsage={analytics.tagUsage}
+        />
       </section>
 
       <section className={styles.grid}>
@@ -1209,37 +1010,52 @@ export default function AnalyticsPage() {
           subtitle="Highest priority items across media, taxonomy, state, and variants."
         >
           {analytics.attentionProducts.length === 0 ? (
-            <EmptyPlot message="Everything looks clean right now." />
+            <div className={styles.emptyPlot}>
+              <AlertTriangle size={18} />
+              <span>Everything looks clean right now.</span>
+            </div>
           ) : (
-            <ul className={styles.list}>
-              {analytics.attentionProducts.map((product) => (
-                <li key={product._id} className={styles.listItem}>
-                  <div className={styles.listTopRow}>
-                    <div>
-                      <p className={styles.listTitle}>{product.name}</p>
-                      <p className={styles.listMeta}>
-                        {product.categoryName} · {formatCurrency(product.price)} · Added{" "}
-                        {formatDate(product.createdAt)}
-                      </p>
+            <>
+              <ul className={styles.list}>
+                {attentionView.items.map((product) => (
+                  <li key={product._id} className={styles.listItem}>
+                    <div className={styles.listTopRow}>
+                      <div>
+                        <p className={styles.listTitle}>{product.name}</p>
+                        <p className={styles.listMeta}>
+                          {product.categoryName} · {formatCurrency(product.price)} · Added{" "}
+                          {formatDate(product.createdAt)}
+                        </p>
+                      </div>
+                      <Link
+                        href={`/admin/products/${product._id}/edit`}
+                        className={styles.inlineLink}
+                      >
+                        Fix
+                        <ArrowRight size={14} />
+                      </Link>
                     </div>
-                    <Link
-                      href={`/admin/products/${product._id}/edit`}
-                      className={styles.inlineLink}
-                    >
-                      Fix
-                      <ArrowRight size={14} />
-                    </Link>
-                  </div>
-                  <div className={styles.reasonRow}>
-                    {product.reasons.map((reason) => (
-                      <span key={reason} className={styles.reasonPill}>
-                        {reason}
-                      </span>
-                    ))}
-                  </div>
-                </li>
-              ))}
-            </ul>
+                    <div className={styles.reasonRow}>
+                      {product.reasons.map((reason) => (
+                        <span key={reason} className={styles.reasonPill}>
+                          {reason}
+                        </span>
+                      ))}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+              <PaginationControls
+                label={buildPageLabel(
+                  attentionView.page,
+                  attentionView.pageSize,
+                  analytics.attentionProducts.length
+                )}
+                page={attentionView.page}
+                totalPages={attentionView.totalPages}
+                onPageChange={setAttentionPage}
+              />
+            </>
           )}
         </Panel>
 
@@ -1295,7 +1111,7 @@ export default function AnalyticsPage() {
           tone="slate"
           eyebrow="Recent"
           title="Recent additions"
-          subtitle="Latest catalog entries with status and value."
+          subtitle="Latest catalog entries and tag usage."
         >
           <div className={styles.subsection}>
             <div className={styles.subsectionHeader}>
@@ -1306,22 +1122,86 @@ export default function AnalyticsPage() {
                   : "No tag usage yet"}
               </span>
             </div>
-            <ul className={styles.compactList}>
-              {analytics.recentProducts.map((product) => (
-                <li key={product._id} className={styles.compactItem}>
-                  <div>
-                    <p className={styles.compactTitle}>{product.name}</p>
-                    <p className={styles.compactMeta}>
-                      {formatDate(product.createdAt)} ·{" "}
-                      {product.published ? "Published" : "Draft"}
-                    </p>
-                  </div>
-                  <span className={styles.compactValue}>
-                    {formatCurrency(parsePrice(product.price))}
-                  </span>
-                </li>
-              ))}
-            </ul>
+            {recentView.items.length > 0 ? (
+              <>
+                <ul className={styles.compactList}>
+                  {recentView.items.map((product) => (
+                    <li key={product._id} className={styles.compactItem}>
+                      <div>
+                        <p className={styles.compactTitle}>{product.name}</p>
+                        <p className={styles.compactMeta}>
+                          {formatDate(product.createdAt)} ·{" "}
+                          {product.published ? "Published" : "Draft"}
+                        </p>
+                      </div>
+                      <span className={styles.compactValue}>
+                        {formatCurrency(parsePrice(product.price))}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                <PaginationControls
+                  label={buildPageLabel(
+                    recentView.page,
+                    recentView.pageSize,
+                    analytics.recentProducts.length
+                  )}
+                  page={recentView.page}
+                  totalPages={recentView.totalPages}
+                  onPageChange={setRecentPage}
+                />
+              </>
+            ) : (
+              <div className={styles.emptyPlot}>
+                <AlertTriangle size={18} />
+                <span>No recent additions are available yet.</span>
+              </div>
+            )}
+          </div>
+
+          <div className={styles.divider} />
+
+          <div className={styles.subsection}>
+            <div className={styles.subsectionHeader}>
+              <h3 className={styles.subsectionTitle}>Tag adoption</h3>
+              <span className={styles.subsectionMeta}>
+                {numberFormatter.format(analytics.totalTags)} tags in the system
+              </span>
+            </div>
+            {tagView.items.length > 0 ? (
+              <>
+                <ul className={styles.compactList}>
+                  {tagView.items.map((tag) => (
+                    <li key={tag.name} className={styles.compactItem}>
+                      <div>
+                        <p className={styles.compactTitle}>{tag.name}</p>
+                        <p className={styles.compactMeta}>
+                          Referenced across the active catalog
+                        </p>
+                      </div>
+                      <span className={styles.compactValue}>
+                        {numberFormatter.format(tag.count)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                <PaginationControls
+                  label={buildPageLabel(
+                    tagView.page,
+                    tagView.pageSize,
+                    analytics.tagUsage.length
+                  )}
+                  page={tagView.page}
+                  totalPages={tagView.totalPages}
+                  onPageChange={setTagPage}
+                />
+              </>
+            ) : (
+              <div className={styles.emptyPlot}>
+                <AlertTriangle size={18} />
+                <span>No tag adoption data is available yet.</span>
+              </div>
+            )}
           </div>
         </Panel>
       </section>
@@ -1409,56 +1289,130 @@ function Panel({
   );
 }
 
-function EmptyPlot({ message }: { message: string }) {
+function ReadinessDial({ value }: { value: number }) {
+  const clampedValue = Math.max(0, Math.min(100, Math.round(value)));
+
   return (
-    <div className={styles.emptyPlot}>
-      <AlertTriangle size={18} />
-      <span>{message}</span>
+    <div
+      className={styles.storyGauge}
+      style={{ "--dial-value": `${clampedValue}%` } as CSSProperties}
+    >
+      <div className={styles.storyGaugeCenter}>
+        <div className={styles.storyScoreValue}>
+          {clampedValue}
+          <span>/100</span>
+        </div>
+        <p className={styles.storyScoreCaption}>Readiness</p>
+      </div>
     </div>
   );
 }
 
-function ChartShell({ children }: { children: React.ReactNode }) {
-  return <div className={styles.chartShell}>{children}</div>;
-}
-
-function LowDataState({
-  latest,
+function PaginationControls({
+  label,
+  page,
+  totalPages,
+  onPageChange,
 }: {
-  latest: { label: string; added: number; published: number; drafts: number };
+  label: string;
+  page: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
 }) {
+  const pages = getVisiblePageNumbers(page, totalPages);
+
   return (
-    <div className={styles.lowDataState}>
-      <div className={styles.lowDataHeader}>
-        <p className={styles.lowDataEyebrow}>Limited history</p>
-        <h3 className={styles.lowDataTitle}>
-          One month of history is available so far.
-        </h3>
-        <p className={styles.lowDataText}>
-          This view stays real instead of drawing a fake trend. More product
-          history will unlock the full chart automatically.
-        </p>
-      </div>
-      <div className={styles.lowDataGrid}>
-        <div className={styles.lowDataMetric}>
-          <span className={styles.lowDataMetricLabel}>Period</span>
-          <strong className={styles.lowDataMetricValue}>{latest.label}</strong>
+    <div className={styles.paginationRow}>
+      <p className={styles.paginationMeta}>{label}</p>
+      {totalPages > 1 ? (
+        <div className={styles.paginationControls}>
+          <button
+            type="button"
+            className={styles.paginationButton}
+            disabled={page <= 1}
+            onClick={() => onPageChange(page - 1)}
+          >
+            Prev
+          </button>
+          {pages.map((pageNumber) => (
+            <button
+              key={pageNumber}
+              type="button"
+              aria-current={pageNumber === page ? "page" : undefined}
+              className={
+                pageNumber === page
+                  ? `${styles.paginationButton} ${styles.paginationButtonActive}`
+                  : styles.paginationButton
+              }
+              onClick={() => onPageChange(pageNumber)}
+            >
+              {pageNumber}
+            </button>
+          ))}
+          <button
+            type="button"
+            className={styles.paginationButton}
+            disabled={page >= totalPages}
+            onClick={() => onPageChange(page + 1)}
+          >
+            Next
+          </button>
         </div>
-        <div className={styles.lowDataMetric}>
-          <span className={styles.lowDataMetricLabel}>Added</span>
-          <strong className={styles.lowDataMetricValue}>{latest.added}</strong>
-        </div>
-        <div className={styles.lowDataMetric}>
-          <span className={styles.lowDataMetricLabel}>Published</span>
-          <strong className={styles.lowDataMetricValue}>{latest.published}</strong>
-        </div>
-        <div className={styles.lowDataMetric}>
-          <span className={styles.lowDataMetricLabel}>Drafts</span>
-          <strong className={styles.lowDataMetricValue}>{latest.drafts}</strong>
-        </div>
-      </div>
+      ) : null}
     </div>
   );
+}
+
+function VisualsLoadingState() {
+  return (
+    <section className={styles.grid}>
+      {Array.from({ length: 3 }).map((_, index) => (
+        <div
+          key={index}
+          className={`${styles.panel} ${styles.skeletonBlock} ${styles.visualLoadingCard}`}
+        />
+      ))}
+    </section>
+  );
+}
+
+function getPageWindow<T>(items: T[], page: number, pageSize: number) {
+  const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
+  const safePage = Math.min(Math.max(page, 1), totalPages);
+  const startIndex = (safePage - 1) * pageSize;
+
+  return {
+    items: items.slice(startIndex, startIndex + pageSize),
+    page: safePage,
+    pageSize,
+    totalPages,
+  };
+}
+
+function buildPageLabel(page: number, pageSize: number, total: number): string {
+  if (total === 0) {
+    return "No records";
+  }
+
+  const start = (page - 1) * pageSize + 1;
+  const end = Math.min(page * pageSize, total);
+  return `Showing ${start}-${end} of ${total}`;
+}
+
+function getVisiblePageNumbers(page: number, totalPages: number): number[] {
+  if (totalPages <= 5) {
+    return Array.from({ length: totalPages }, (_, index) => index + 1);
+  }
+
+  const start = Math.max(1, page - 1);
+  const end = Math.min(totalPages, page + 1);
+  const pages = new Set([1, totalPages]);
+
+  for (let current = start; current <= end; current += 1) {
+    pages.add(current);
+  }
+
+  return Array.from(pages).sort((left, right) => left - right);
 }
 
 function StoryCard({

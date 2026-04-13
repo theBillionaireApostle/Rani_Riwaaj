@@ -203,6 +203,80 @@
   gap: 1rem;
 }
 
+.visualSection {
+  display: grid;
+  gap: 1rem;
+}
+
+.visualHeader {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.visualCopy {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.visualTitle {
+  margin: 0;
+  font-size: clamp(1.25rem, 2.8vw, 1.85rem);
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+}
+
+.visualText {
+  margin: 0;
+  max-width: 60ch;
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.visualTabs {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.visualTab {
+  min-height: 2.75rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid rgba(23, 32, 51, 0.08);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.78);
+  color: var(--muted);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    transform 0.18s ease,
+    border-color 0.18s ease,
+    background-color 0.18s ease,
+    color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.visualTab:hover {
+  transform: translateY(-1px);
+  border-color: rgba(37, 99, 235, 0.18);
+  color: var(--ink);
+}
+
+.visualTab:focus-visible,
+.paginationButton:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.14);
+}
+
+.visualTabActive {
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.12), rgba(6, 182, 212, 0.12));
+  border-color: rgba(37, 99, 235, 0.18);
+  color: var(--ink);
+  box-shadow: 0 14px 32px rgba(37, 99, 235, 0.14);
+}
+
 .storyCard {
   grid-column: span 4;
   display: grid;
@@ -285,6 +359,28 @@
   position: relative;
   width: min(100%, 11.5rem);
   aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at center, rgba(255, 255, 255, 0.28) 0 42%, transparent 43%),
+    conic-gradient(
+      from -90deg,
+      #2563eb 0,
+      #06b6d4 var(--dial-value, 0%),
+      rgba(23, 32, 51, 0.08) var(--dial-value, 0%),
+      rgba(23, 32, 51, 0.08) 100%
+    );
+}
+
+.storyGauge::before {
+  content: "";
+  position: absolute;
+  inset: 14%;
+  border-radius: inherit;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(23, 32, 51, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
 }
 
 .storyGaugeCenter {
@@ -295,6 +391,7 @@
   align-content: center;
   text-align: center;
   pointer-events: none;
+  z-index: 1;
 }
 
 .storyScoreValue {
@@ -658,6 +755,51 @@
   z-index: 1;
 }
 
+.chartTooltip {
+  min-width: 12rem;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid rgba(23, 32, 51, 0.08);
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 18px 36px rgba(23, 32, 51, 0.12);
+}
+
+.chartTooltipLabel {
+  margin: 0 0 0.5rem;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.chartTooltipList {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.chartTooltipItem {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 0.55rem;
+  align-items: center;
+}
+
+.chartTooltipSwatch {
+  width: 0.72rem;
+  height: 0.72rem;
+  border-radius: 999px;
+}
+
+.chartTooltipKey {
+  color: var(--ink);
+  font-size: 0.9rem;
+}
+
+.chartTooltipValue {
+  font-size: 0.9rem;
+}
+
 .lowDataState {
   position: relative;
   z-index: 1;
@@ -872,6 +1014,66 @@
   color: var(--slate);
 }
 
+.paginationRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.85rem;
+  flex-wrap: wrap;
+}
+
+.paginationMeta {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.55;
+}
+
+.paginationControls {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.paginationButton {
+  min-width: 2.5rem;
+  min-height: 2.5rem;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid rgba(23, 32, 51, 0.08);
+  border-radius: 0.9rem;
+  background: rgba(255, 255, 255, 0.84);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    transform 0.18s ease,
+    border-color 0.18s ease,
+    background-color 0.18s ease,
+    color 0.18s ease;
+}
+
+.paginationButton:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: rgba(37, 99, 235, 0.18);
+}
+
+.paginationButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.paginationButtonActive {
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.14), rgba(6, 182, 212, 0.14));
+  border-color: rgba(37, 99, 235, 0.22);
+  color: var(--ink);
+}
+
+.visualLoadingCard {
+  min-height: 24rem;
+}
+
 .spin {
   animation: spin 0.8s linear infinite;
 }
@@ -920,6 +1122,11 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .visualHeader {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
   .hero {
     grid-template-columns: 1fr;
   }
@@ -962,7 +1169,8 @@
   .heroActions,
   .warningList,
   .reasonRow,
-  .heroMeta {
+  .heroMeta,
+  .visualTabs {
     gap: 0.6rem;
   }
 
@@ -988,7 +1196,8 @@
   .subsectionHeader,
   .compactItem,
   .watchMetric,
-  .coverageTopRow {
+  .coverageTopRow,
+  .paginationRow {
     grid-template-columns: 1fr;
   }
 
@@ -996,7 +1205,8 @@
   .subsectionHeader,
   .compactItem,
   .watchMetric,
-  .coverageTopRow {
+  .coverageTopRow,
+  .paginationRow {
     display: grid;
   }
 
@@ -1013,7 +1223,12 @@
 
   .inlineLink,
   .primaryButton,
-  .secondaryButton {
+  .secondaryButton,
+  .visualTab {
+    width: 100%;
+  }
+
+  .paginationControls {
     width: 100%;
   }
 }
