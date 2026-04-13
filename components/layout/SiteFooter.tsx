@@ -22,7 +22,7 @@ export default function SiteFooter() {
           <h3>Quick Links</h3>
           <ul>
             <li><Link href="/">Home</Link></li>
-            <li><Link href="/shop">Shop</Link></li>
+            <li><Link href="/#shop">Shop</Link></li>
             <li><Link href="/about">About Us</Link></li>
           </ul>
         </div>

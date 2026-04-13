@@ -1,10 +1,13 @@
-
-
 "use client";
 
-import { useState } from "react";
-import { Eye, EyeOff } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Eye, EyeOff, Loader2, LockKeyhole, ShieldCheck } from "lucide-react";
 import { toast } from "react-toastify";
+import { getErrorMessage } from "@/lib/error-utils";
+
+interface ChangePasswordResponse {
+  message?: string;
+}
 
 export default function SettingsPage() {
   const [currentPassword, setCurrentPassword] = useState("");
@@ -15,183 +18,219 @@ export default function SettingsPage() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const passwordStrength = useMemo(() => {
+    if (!newPassword) return "Waiting";
+    if (newPassword.length < 8) return "Weak";
+    if (newPassword.length < 12) return "Good";
+    return "Strong";
+  }, [newPassword]);
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
     if (!currentPassword || !newPassword || !confirmPassword) {
       toast.error("All fields are required.");
       return;
     }
+
     if (newPassword !== confirmPassword) {
       toast.error("New password and confirmation do not match.");
       return;
     }
+
     if (newPassword.length < 8) {
       toast.error("New password must be at least 8 characters.");
       return;
     }
 
     setLoading(true);
+
     try {
       const token = localStorage.getItem("admin_jwt") || "";
-      const res = await fetch("https://rani-riwaaj-backend-ylbq.vercel.app/admin/change-password", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ currentPassword, newPassword }),
-      });
-      if (!res.ok) {
-        const { message } = await res.json().catch(() => ({}));
-        throw new Error(message || "Failed to change password");
+      const response = await fetch(
+        "https://rani-riwaaj-backend-ylbq.vercel.app/admin/change-password",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ currentPassword, newPassword }),
+        }
+      );
+
+      if (!response.ok) {
+        const { message }: ChangePasswordResponse = await response
+          .json()
+          .catch(() => ({}));
+        throw new Error(message || "Failed to change password.");
       }
-      toast.success("Password changed successfully!");
+
+      toast.success("Password changed successfully.");
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
-    } catch (err: any) {
-      toast.error(err.message);
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="container">
-      <h1>Admin Settings</h1>
-      <form onSubmit={handleSubmit} className="form">
-        <div className="inputGroup">
-          <label>Current Password</label>
-          <div className="passwordWrapper">
-            <input
-              type={showCurrent ? "text" : "password"}
-              value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
-              disabled={loading}
-            />
-            <button
-              type="button"
-              className="toggleBtn"
-              onClick={() => setShowCurrent((s) => !s)}
-            >
-              {showCurrent ? <EyeOff size={16} /> : <Eye size={16} />}
-            </button>
-          </div>
+    <section className="rr-admin-page">
+      <div className="rr-admin-pageIntro">
+        <div className="rr-admin-pageLead">
+          <span className="rr-admin-kicker">Security</span>
+          <h1 className="rr-admin-pageTitle">Settings</h1>
+          <p className="rr-admin-pageDescription">
+            Admin access and password control.
+          </p>
         </div>
-        <div className="inputGroup">
-          <label>New Password</label>
-          <div className="passwordWrapper">
-            <input
-              type={showNew ? "text" : "password"}
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              disabled={loading}
-            />
-            <button
-              type="button"
-              className="toggleBtn"
-              onClick={() => setShowNew((s) => !s)}
-            >
-              {showNew ? <EyeOff size={16} /> : <Eye size={16} />}
-            </button>
-          </div>
-        </div>
-        <div className="inputGroup">
-          <label>Confirm New Password</label>
-          <div className="passwordWrapper">
-            <input
-              type={showConfirm ? "text" : "password"}
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              disabled={loading}
-            />
-            <button
-              type="button"
-              className="toggleBtn"
-              onClick={() => setShowConfirm((s) => !s)}
-            >
-              {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
-            </button>
-          </div>
-        </div>
-        <button type="submit" className="submitBtn" disabled={loading}>
-          {loading ? "Updating..." : "Change Password"}
-        </button>
-      </form>
+      </div>
 
-      <style jsx>{`
-        .container {
-          max-width: 400px;
-          margin: 2rem auto;
-          padding: 2rem;
-          background: #fff;
-          border-radius: 8px;
-          box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-          font-family: Poppins, sans-serif;
-        }
-        h1 {
-          text-align: center;
-          margin-bottom: 1.5rem;
-          font-size: 1.5rem;
-          color: #333;
-        }
-        .form {
-          display: flex;
-          flex-direction: column;
-          gap: 1rem;
-        }
-        .inputGroup label {
-          display: block;
-          margin-bottom: 0.25rem;
-          font-weight: 600;
-          color: #555;
-        }
-        .passwordWrapper {
-          position: relative;
-        }
-        input {
-          width: 100%;
-          padding: 0.5rem 2.5rem 0.5rem 0.75rem;
-          border: 1px solid #ccc;
-          border-radius: 6px;
-          font-size: 1rem;
-        }
-        input:focus {
-          outline: none;
-          border-color: #007EA7;
-          box-shadow: 0 0 0 3px rgba(0,126,167,0.2);
-        }
-        .toggleBtn {
-          position: absolute;
-          right: 0.5rem;
-          top: 50%;
-          transform: translateY(-50%);
-          background: transparent;
-          border: none;
-          cursor: pointer;
-          color: #666;
-        }
-        .toggleBtn:focus {
-          outline: none;
-        }
-        .submitBtn {
-          padding: 0.75rem;
-          background-color: #007EA7;
-          color: #fff;
-          font-weight: 600;
-          border: none;
-          border-radius: 6px;
-          cursor: pointer;
-          transition: background-color 0.3s ease;
-        }
-        .submitBtn:hover:not(:disabled) {
-          background-color: #005f85;
-        }
-        .submitBtn:disabled {
-          opacity: 0.6;
-          cursor: not-allowed;
-        }
-      `}</style>
-    </div>
+      <div className="rr-admin-grid rr-admin-grid--2">
+        <article className="rr-admin-panel">
+          <div className="rr-admin-panelHeader">
+            <div>
+              <h2 className="rr-admin-panelTitle">Change password</h2>
+              <p className="rr-admin-panelText">
+                Update the admin password.
+              </p>
+            </div>
+            <span className="rr-admin-badge rr-admin-badge--info">{passwordStrength}</span>
+          </div>
+
+          <form className="rr-admin-grid" onSubmit={handleSubmit}>
+            <label className="rr-admin-field">
+              <span className="rr-admin-fieldLabel">Current password</span>
+              <div className="rr-admin-inputShell">
+                <input
+                  className="rr-admin-input"
+                  type={showCurrent ? "text" : "password"}
+                  value={currentPassword}
+                  onChange={(event) => setCurrentPassword(event.target.value)}
+                  disabled={loading}
+                />
+                <button
+                  type="button"
+                  className="rr-admin-iconButton rr-admin-inputAction"
+                  onClick={() => setShowCurrent((value) => !value)}
+                >
+                  {showCurrent ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+            </label>
+
+            <label className="rr-admin-field">
+              <span className="rr-admin-fieldLabel">New password</span>
+              <div className="rr-admin-inputShell">
+                <input
+                  className="rr-admin-input"
+                  type={showNew ? "text" : "password"}
+                  value={newPassword}
+                  onChange={(event) => setNewPassword(event.target.value)}
+                  disabled={loading}
+                />
+                <button
+                  type="button"
+                  className="rr-admin-iconButton rr-admin-inputAction"
+                  onClick={() => setShowNew((value) => !value)}
+                >
+                  {showNew ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+            </label>
+
+            <label className="rr-admin-field">
+              <span className="rr-admin-fieldLabel">Confirm new password</span>
+              <div className="rr-admin-inputShell">
+                <input
+                  className="rr-admin-input"
+                  type={showConfirm ? "text" : "password"}
+                  value={confirmPassword}
+                  onChange={(event) => setConfirmPassword(event.target.value)}
+                  disabled={loading}
+                />
+                <button
+                  type="button"
+                  className="rr-admin-iconButton rr-admin-inputAction"
+                  onClick={() => setShowConfirm((value) => !value)}
+                >
+                  {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+            </label>
+
+            <div className="rr-admin-formActions">
+              <button
+                type="submit"
+                className="rr-admin-button rr-admin-button--primary"
+                disabled={loading}
+              >
+                {loading ? (
+                  <>
+                    <Loader2 size={16} className="rr-admin-spin" />
+                    Updating...
+                  </>
+                ) : (
+                  "Update password"
+                )}
+              </button>
+            </div>
+          </form>
+        </article>
+
+        <article className="rr-admin-panel">
+          <div className="rr-admin-panelHeader">
+            <div>
+              <h2 className="rr-admin-panelTitle">Security guidance</h2>
+              <p className="rr-admin-panelText">
+                Keep admin access clean and controlled.
+              </p>
+            </div>
+            <ShieldCheck size={18} />
+          </div>
+
+          <div className="rr-admin-grid">
+            <div className="rr-admin-listItem">
+              <div className="rr-admin-listHeader">
+                <div>
+                  <h3 className="rr-admin-listTitle">Use unique credentials</h3>
+                  <p className="rr-admin-listSubtitle">
+                    Avoid reusing passwords from personal or shared accounts.
+                  </p>
+                </div>
+                <LockKeyhole size={18} />
+              </div>
+            </div>
+
+            <div className="rr-admin-listItem">
+              <div className="rr-admin-listHeader">
+                <div>
+                  <h3 className="rr-admin-listTitle">Rotate after access changes</h3>
+                  <p className="rr-admin-listSubtitle">
+                    Update credentials whenever staff access changes or devices are replaced.
+                  </p>
+                </div>
+                <ShieldCheck size={18} />
+              </div>
+            </div>
+
+            <div className="rr-admin-listItem">
+              <div className="rr-admin-listHeader">
+                <div>
+                  <h3 className="rr-admin-listTitle">Keep sessions clean</h3>
+                  <p className="rr-admin-listSubtitle">
+                    Sign out after admin work on shared devices and browsers.
+                  </p>
+                </div>
+                <Eye size={18} />
+              </div>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
   );
 }

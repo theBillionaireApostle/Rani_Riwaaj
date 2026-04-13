@@ -3,7 +3,7 @@
 import { ReactNode } from "react";
 
 export const metadata = {
-  title: "Admin Login | Phulkari Bagh",
+  title: "Admin Login | Rani Riwaaj",
   description: "Login to access the admin panel.",
 };
 

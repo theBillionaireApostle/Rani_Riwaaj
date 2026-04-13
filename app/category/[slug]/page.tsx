@@ -1,6 +1,8 @@
 // app/category/[slug]/page.tsx
 import type { Metadata } from "next";
+import Link from "next/link";
 import { ProductsGrid } from "../../../components/ProductsGrid";   // adjust path!
+import type { Product as GridProduct } from "../../../components/ProductsGrid";
 import SiteHeader         from "@/components/layout/SiteHeader";
 import SiteFooter         from "@/components/layout/SiteFooter";
 import styles             from "./page.module.css";
@@ -32,14 +34,14 @@ export default async function CategoryPage(
         <SiteHeader />
         <main className={styles.center}>
           <p>Category not found.</p>
-          <p><a href="/">Back&nbsp;to&nbsp;shop</a></p>
+          <p><Link href="/">Back&nbsp;to&nbsp;shop</Link></p>
         </main>
         <SiteFooter />
       </>
     );
   }
 
-  const products = await res.json();
+  const products: GridProduct[] = await res.json();
 
   return (
     <>

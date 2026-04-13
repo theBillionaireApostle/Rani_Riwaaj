@@ -6,7 +6,7 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "eslint . --ext .js,.ts,.tsx"
   },
   "dependencies": {
     "@fortawesome/free-brands-svg-icons": "^6.7.2",

@@ -20,11 +20,12 @@ import {
 import SiteHeader from "@/components/layout/SiteHeader";
 import SiteFooter from "@/components/layout/SiteFooter";
 // Import Firebase auth functions and the auth object
-import { onAuthStateChanged, User, signOut } from "firebase/auth";
+import { onAuthStateChanged, User } from "firebase/auth";
 import { auth } from "./firebaseClient";
 import styles from "./page.module.css";
 import { toast } from "react-toastify";
 import { useWishlist } from "@/lib/useWishlist";
+import { getErrorMessage } from "@/lib/error-utils";
 
 // ---------- Custom Select (prevents shrink, animated, accessible) ----------
 type Option = { value: string; label: string };
@@ -189,6 +190,7 @@ interface Category {
 type Product = {
   _id: string;
   name: string;
+  desc?: string;
   price: number | string;
   originalPrice?: number | string;
   colors?: string[];
@@ -199,6 +201,7 @@ type Product = {
   badgeLabel?: string;
   defaultImage?: { url: string };
   additionalImages?: string[];
+  createdAt: string;
 };
 
 export default function Home() {
@@ -234,7 +237,7 @@ export default function Home() {
     return () => clearInterval(id);
   }, [heroImages.length]);
   // Products state initialized to an empty array
-  const [products, setProducts] = useState<any[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [cartCount, setCartCount] = useState(0);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -320,7 +323,7 @@ export default function Home() {
         if (!res.ok) {
           throw new Error("Failed to fetch products");
         }
-        const data = await res.json();
+        const data: Product[] = await res.json();
         setProducts(data);
       } catch (error) {
         console.error(error);
@@ -338,7 +341,8 @@ export default function Home() {
       try {
         const res = await fetch("https://rani-riwaaj-backend-ylbq.vercel.app/api/categories");
         if (!res.ok) throw new Error("Failed to fetch categories");
-        setCategories(await res.json());
+        const data: Category[] = await res.json();
+        setCategories(data);
       } catch (err) {
         console.error(err);
       } finally {
@@ -370,10 +374,10 @@ export default function Home() {
           if (!res.ok) {
             throw new Error("Failed to fetch cart");
           }
-          const cartData = await res.json();
+          const cartData: { items?: CartItem[] } = await res.json();
           if (cartData && Array.isArray(cartData.items)) {
             const totalCount = cartData.items.reduce(
-              (acc: number, item: any) => acc + item.quantity,
+              (acc, item) => acc + item.quantity,
               0
             );
             setCartCount(totalCount);
@@ -488,7 +492,7 @@ export default function Home() {
   const totalProducts = sortedProducts.length;
 
   // --- Add to Cart Handler ---
-  const handleAddToCart = async (product: any) => {
+  const handleAddToCart = async (product: Product) => {
     const priceNum = parsePrice(product.price);
     let updatedCartItems: CartItem[];
 
@@ -549,9 +553,9 @@ export default function Home() {
         pauseOnHover: true,
         draggable: true,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating the cart:", error);
-      toast.error("Error updating your cart. Please try again.", {
+      toast.error(getErrorMessage(error, "Error updating your cart. Please try again."), {
         position: "top-right",
         autoClose: 3000,
         hideProgressBar: false,
@@ -569,11 +573,11 @@ export default function Home() {
 
 
   // WhatsApp enquiry functions.
-  const getWhatsAppMessage = (product: any) => {
+  const getWhatsAppMessage = (product: Product) => {
     return `I'm interested in ${product.name} priced at Rs ${product.price}. Please send me more details.`;
   };
 
-  const handleWhatsAppEnquiry = (product: any) => {
+  const handleWhatsAppEnquiry = (product: Product) => {
     const message = encodeURIComponent(getWhatsAppMessage(product));
     window.open(
       `https://api.whatsapp.com/send?phone=+919510394742&text=${message}`,

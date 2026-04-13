@@ -1,242 +1,311 @@
-/* -----------------------------------------------------------------------------
-   ✨  EditProductForm – ultimate polish: heading, back button, aligned icons
-   ----------------------------------------------------------------------------- */
+"use client";
 
-   "use client";
+import Image from "next/image";
+import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { ArrowLeft, Loader2, Save, X } from "lucide-react";
+import { toast } from "react-toastify";
+import { getErrorMessage } from "@/lib/error-utils";
 
-   import React, { useEffect, useRef, useState } from "react";
-   import Link from "next/link";
-   import { useRouter } from "next/navigation";
-   import { useForm } from "react-hook-form";
-   import { zodResolver } from "@hookform/resolvers/zod";
-   import * as z from "zod";
-   import { Save, X, Loader2, ArrowLeft } from "lucide-react";
-   import { toast } from "react-toastify";
-   import clsx from "clsx";
-   
-   /* ------------------------------ Schema ------------------------------ */
-   const schema = z.object({
-     name: z.string().min(1, "Name is required"),
-     price: z
-       .string()
-       .trim()
-       .regex(/^(\d{1,3}(,?\d{3})*)(\.\d{1,2})?$/, "Use only numbers & commas (e.g. 1,499)")
-       .transform((v) => v.replace(/,/g, "")),
-     desc: z.string().min(1, "Description is required"),
-     defaultImageUrl: z.string().url("Please enter a valid image URL"),
-     colorsText: z.string().optional(),
-     sizesText: z.string().optional(),
-     badge: z.string().optional(),
-     justIn: z.boolean().default(false),
-     published: z.boolean().default(false),
-   });
-   export type FormValues = z.infer<typeof schema>;
-   
-   /* ------------------------------ Helpers ----------------------------- */
-   const splitCSV = (value?: string) => value?.split(/,\s*/).map((s) => s.trim()).filter(Boolean) ?? [];
-   const PLACEHOLDER_IMG = "/images/placeholder.svg";
-   
-   /* ------------------------------ Field ------------------------------- */
-   interface FieldProps { label: string; error?: string; children: React.ReactNode }
-   const Field = ({ label, error, children }: FieldProps) => (
-     <div className="flex w-full flex-col gap-1">
-       <label className="text-sm font-medium text-gray-700 dark:text-gray-200">{label}</label>
-       {children}
-       {error && <span className="text-xs text-red-600">{error}</span>}
-     </div>
-   );
-   
-   /* ------------------------------ Component --------------------------- */
-   interface Props {
-     product: {
-       _id: string;
-       name: string;
-       price: string;
-       desc: string;
-       defaultImage: { url: string };
-       colors: string[];
-       sizes: string[];
-       badge: string;
-       justIn: boolean;
-       published: boolean;
-       createdAt: string;
-       updatedAt: string;
-     };
-   }
-   export default function EditProductForm({ product }: Props) {
-     const router = useRouter();
-     const abortRef = useRef<AbortController | null>(null);
-     const {
-       register,
-       handleSubmit,
-       formState: { errors, isSubmitting, isDirty },
-       watch,
-       reset,
-     } = useForm<FormValues>({
-       resolver: zodResolver(schema),
-       defaultValues: {
-         name: product.name,
-         price: product.price,
-         desc: product.desc,
-         defaultImageUrl: product.defaultImage.url,
-         colorsText: product.colors.join(", "),
-         sizesText: product.sizes.join(", "),
-         badge: product.badge,
-         justIn: product.justIn,
-         published: product.published,
-       },
-       mode: "onBlur",
-     });
-   
-     const previewUrl = watch("defaultImageUrl");
-     const [imgError, setImgError] = useState(false);
-   
-     useEffect(() => setImgError(false), [previewUrl]);
-   
-     async function onSubmit(data: FormValues) {
-       if (!isDirty) {
-         toast.info("No changes detected");
-         return;
-       }
-       const body = {
-         name: data.name.trim(),
-         price: Number(data.price),
-         desc: data.desc.trim(),
-         defaultImage: { url: data.defaultImageUrl.trim() },
-         colors: splitCSV(data.colorsText),
-         sizes: splitCSV(data.sizesText),
-         badge: data.badge?.trim() ?? "",
-         justIn: data.justIn,
-         published: data.published,
-       };
-       try {
-         abortRef.current?.abort();
-         abortRef.current = new AbortController();
-         const res = await fetch(`https://rani-riwaaj-backend-ylbq.vercel.app/api/products/${product._id}`, {
-           method: "PUT",
-           headers: { "Content-Type": "application/json" },
-           body: JSON.stringify(body),
-           signal: abortRef.current.signal,
-         });
-         if (!res.ok) throw new Error(await res.text());
-         toast.success("Product updated ✨", { autoClose: 2500 });
-         reset(undefined, { keepValues: true });
-         router.push("/admin/products");
-       } catch (err: any) {
-         if (err.name !== "AbortError") toast.error(err.message || "Something went wrong");
-       }
-     }
-   
-     /* ------------------------------ UI ------------------------------- */
-     return (
-       <section className="mx-auto mt-12 w-full max-w-4xl px-4 sm:px-8">
-         {/* Header */}
-         <div className="mb-6 flex items-center gap-4">
-         <button onClick={() => router.back()} aria-label="Go back"  className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700">
-             <ArrowLeft className="h-5 w-5" />
-           </button>
-           <h1 className="text-2xl font-semibold tracking-tight text-prussian dark:text-platinum">Edit Product</h1>
-         </div>
-   
-         <form onSubmit={handleSubmit(onSubmit)} className="space-y-8 rounded-lg bg-white p-8 shadow-md dark:bg-richblack">
-           {/* Basics */}
-           <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
-             <Field label="Name" error={errors.name?.message}>
-               <input type="text" {...register("name")} className={clsx("input", errors.name && "input-error")} />
-             </Field>
-             <Field label="Price (₹)" error={errors.price?.message}>
-               <input type="text" inputMode="numeric" {...register("price")} className={clsx("input", errors.price && "input-error")} />
-             </Field>
-             <Field label="Colors (comma-separated)">
-               <input type="text" {...register("colorsText")} className="input" />
-             </Field>
-             <Field label="Sizes (comma-separated)">
-               <input type="text" {...register("sizesText")} className="input" />
-             </Field>
-           </div>
-   
-           {/* Description */}
-           <Field label="Description" error={errors.desc?.message}>
-             <textarea rows={4} {...register("desc")} className={clsx("input", errors.desc && "input-error")} />
-           </Field>
-   
-           {/* Image */}
-           <div className="grid grid-cols-1 items-start gap-8 md:grid-cols-2">
-             <Field label="Default Image URL" error={errors.defaultImageUrl?.message}>
-               <input type="url" {...register("defaultImageUrl")} className={clsx("input", errors.defaultImageUrl && "input-error")} />
-             </Field>
-             <div className="flex justify-center md:justify-start">
-               <img src={imgError ? PLACEHOLDER_IMG : previewUrl} alt="Preview" className="h-40 w-auto rounded border object-contain" onError={() => setImgError(true)} />
-             </div>
-           </div>
-   
-           {/* Badge & Toggles */}
-           <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
-             <Field label="Badge Label (optional)">
-               <input type="text" {...register("badge")} className="input" />
-             </Field>
-             <div className="flex flex-wrap items-center gap-6 pt-8 md:pt-2 text-sm">
-               <label className="flex items-center gap-2"><input type="checkbox" {...register("justIn")} /> <span>Just In</span></label>
-               <label className="flex items-center gap-2"><input type="checkbox" {...register("published")} /> <span>Published</span></label>
-             </div>
-           </div>
-   
-           {/* Timestamps */}
-           <p className="text-xs text-gray-500 dark:text-gray-400">Created {new Date(product.createdAt).toLocaleString()} • Updated {new Date(product.updatedAt).toLocaleString()}</p>
-   
-           {/* Action Buttons */}
-           <div className="flex flex-col gap-4 sm:flex-row">
-  {/* ── Save ── */}
-  <button
-    type="submit"
-    disabled={isSubmitting || !isDirty}
-    className={clsx(
-      "flex flex-1 items-center justify-center gap-2 rounded px-4 py-2 font-medium text-white transition",
-      // enabled
-      !(isSubmitting || !isDirty) && "bg-blue-600 hover:bg-blue-700",
-      // disabled
-      (isSubmitting || !isDirty) && "bg-blue-400 cursor-not-allowed"
-    )}
-  >
-    {isSubmitting ? (
-      <Loader2 className="h-5 w-5 animate-spin" />
-    ) : (
-      <Save className="h-5 w-5" />
-    )}
-    <span>Save&nbsp;Changes</span>
-  </button>
+const schema = z.object({
+  badge: z.string().optional(),
+  colorsText: z.string().optional(),
+  defaultImageUrl: z.string().url("Please enter a valid image URL."),
+  desc: z.string().min(1, "Description is required."),
+  justIn: z.boolean().default(false),
+  name: z.string().min(1, "Name is required."),
+  price: z
+    .string()
+    .trim()
+    .regex(
+      /^(\d{1,3}(,?\d{3})*)(\.\d{1,2})?$/,
+      "Use only numbers and commas, for example 1,499."
+    )
+    .transform((value) => value.replace(/,/g, "")),
+  published: z.boolean().default(false),
+  sizesText: z.string().optional(),
+});
 
-  {/* ── Cancel (back) ── */}
-  <button
-    type="button"
-    onClick={() => router.back()}
-    className="flex flex-1 items-center justify-center gap-2 rounded border border-blue-600 px-4 py-2 font-medium text-blue-600 transition hover:bg-blue-50"
-  >
-    <X className="h-5 w-5" />
-    <span>Cancel</span>
-  </button>
-</div>
-         </form>
-   
-         {/* Tailwind util overrides */}
-         <style jsx global>{`
-           .input {
-             @apply w-full rounded border border-gray-300 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-cerulean dark:border-gray-700 dark:bg-gray-800 dark:focus:ring-cerulean/80;
-           }
-           .input-error {
-             @apply border-red-500 focus:ring-red-500;
-           }
-           .btn-base {
-             @apply inline-flex items-center justify-center gap-2 whitespace-nowrap rounded px-4 py-2 font-medium transition;
-           }
-           .btn-primary {
-             @apply btn-base bg-cerulean text-white hover:bg-cerulean/90;
-           }
-           .btn-danger {
-             @apply btn-base bg-red-600 text-white hover:bg-red-700;
-           }
-         `}</style>
-       </section>
-     );
-   }
-   
+export type FormValues = z.infer<typeof schema>;
+
+const PLACEHOLDER_IMAGE = "/images/placeholder.svg";
+
+function splitCsv(value?: string) {
+  return value?.split(/,\s*/).map((entry) => entry.trim()).filter(Boolean) ?? [];
+}
+
+interface Props {
+  product: {
+    _id: string;
+    badge: string;
+    colors: string[];
+    createdAt: string;
+    defaultImage: { url: string };
+    desc: string;
+    justIn: boolean;
+    name: string;
+    price: string;
+    published: boolean;
+    sizes: string[];
+    updatedAt: string;
+  };
+}
+
+export default function EditProductForm({ product }: Props) {
+  const router = useRouter();
+  const abortRef = useRef<AbortController | null>(null);
+  const [imageError, setImageError] = useState(false);
+
+  const {
+    formState: { errors, isDirty, isSubmitting },
+    handleSubmit,
+    register,
+    reset,
+    watch,
+  } = useForm<FormValues>({
+    defaultValues: {
+      badge: product.badge,
+      colorsText: product.colors.join(", "),
+      defaultImageUrl: product.defaultImage.url,
+      desc: product.desc,
+      justIn: product.justIn,
+      name: product.name,
+      price: product.price,
+      published: product.published,
+      sizesText: product.sizes.join(", "),
+    },
+    mode: "onBlur",
+    resolver: zodResolver(schema),
+  });
+
+  const previewUrl = watch("defaultImageUrl");
+
+  useEffect(() => {
+    setImageError(false);
+  }, [previewUrl]);
+
+  async function onSubmit(values: FormValues) {
+    if (!isDirty) {
+      toast.info("No changes detected.");
+      return;
+    }
+
+    try {
+      abortRef.current?.abort();
+      abortRef.current = new AbortController();
+
+      const response = await fetch(
+        `https://rani-riwaaj-backend-ylbq.vercel.app/api/products/${product._id}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            badge: values.badge?.trim() ?? "",
+            colors: splitCsv(values.colorsText),
+            defaultImage: { url: values.defaultImageUrl.trim() },
+            desc: values.desc.trim(),
+            justIn: values.justIn,
+            name: values.name.trim(),
+            price: Number(values.price),
+            published: values.published,
+            sizes: splitCsv(values.sizesText),
+          }),
+          signal: abortRef.current.signal,
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(await response.text());
+      }
+
+      toast.success("Product updated successfully.");
+      reset(undefined, { keepValues: true });
+      router.push("/admin/products");
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name === "AbortError") return;
+      toast.error(getErrorMessage(err));
+    }
+  }
+
+  return (
+    <section className="rr-admin-page">
+      <div className="rr-admin-pageIntro">
+        <div className="rr-admin-pageLead">
+          <span className="rr-admin-kicker">Catalog</span>
+          <h1 className="rr-admin-pageTitle">Edit Product</h1>
+          <p className="rr-admin-pageDescription">
+            Update product details and publish state.
+          </p>
+        </div>
+        <div className="rr-admin-actions">
+          <button
+            type="button"
+            className="rr-admin-button rr-admin-button--secondary"
+            onClick={() => router.back()}
+          >
+            <ArrowLeft size={16} />
+            Back
+          </button>
+        </div>
+      </div>
+
+      <div className="rr-admin-grid rr-admin-grid--2">
+        <form className="rr-admin-panel rr-admin-grid" onSubmit={handleSubmit(onSubmit)}>
+          <div className="rr-admin-panelHeader">
+            <div>
+              <h2 className="rr-admin-panelTitle">Product details</h2>
+              <p className="rr-admin-panelText">
+                Update the essentials first.
+              </p>
+            </div>
+          </div>
+
+          <div className="rr-admin-formGrid">
+            <label className="rr-admin-field">
+              <span className="rr-admin-fieldLabel">Name</span>
+              <input className="rr-admin-input" type="text" {...register("name")} />
+              {errors.name ? (
+                <span className="rr-admin-fieldError">{errors.name.message}</span>
+              ) : null}
+            </label>
+
+            <label className="rr-admin-field">
+              <span className="rr-admin-fieldLabel">Price (INR)</span>
+              <input
+                className="rr-admin-input"
+                type="text"
+                inputMode="numeric"
+                {...register("price")}
+              />
+              {errors.price ? (
+                <span className="rr-admin-fieldError">{errors.price.message}</span>
+              ) : null}
+            </label>
+
+            <label className="rr-admin-field">
+              <span className="rr-admin-fieldLabel">Colors</span>
+              <input className="rr-admin-input" type="text" {...register("colorsText")} />
+            </label>
+
+            <label className="rr-admin-field">
+              <span className="rr-admin-fieldLabel">Sizes</span>
+              <input className="rr-admin-input" type="text" {...register("sizesText")} />
+            </label>
+          </div>
+
+          <label className="rr-admin-field">
+            <span className="rr-admin-fieldLabel">Description</span>
+            <textarea className="rr-admin-textarea" rows={5} {...register("desc")} />
+            {errors.desc ? (
+              <span className="rr-admin-fieldError">{errors.desc.message}</span>
+            ) : null}
+          </label>
+
+          <label className="rr-admin-field">
+            <span className="rr-admin-fieldLabel">Default image URL</span>
+            <input className="rr-admin-input" type="url" {...register("defaultImageUrl")} />
+            {errors.defaultImageUrl ? (
+              <span className="rr-admin-fieldError">
+                {errors.defaultImageUrl.message}
+              </span>
+            ) : null}
+          </label>
+
+          <label className="rr-admin-field">
+            <span className="rr-admin-fieldLabel">Badge</span>
+            <input className="rr-admin-input" type="text" {...register("badge")} />
+          </label>
+
+          <div className="rr-admin-toggleGroup">
+            <label className="rr-admin-checkbox">
+              <input type="checkbox" {...register("justIn")} />
+              <span>Mark as just in</span>
+            </label>
+            <label className="rr-admin-checkbox">
+              <input type="checkbox" {...register("published")} />
+              <span>Published</span>
+            </label>
+          </div>
+
+          <p className="rr-admin-mutedText">
+            Created {new Date(product.createdAt).toLocaleString()} and last updated{" "}
+            {new Date(product.updatedAt).toLocaleString()}.
+          </p>
+
+          <div className="rr-admin-formActions">
+            <button
+              type="submit"
+              className="rr-admin-button rr-admin-button--primary"
+              disabled={isSubmitting || !isDirty}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 size={16} className="rr-admin-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save size={16} />
+                  Save changes
+                </>
+              )}
+            </button>
+            <button
+              type="button"
+              className="rr-admin-button rr-admin-button--ghost"
+              onClick={() => router.back()}
+            >
+              <X size={16} />
+              Cancel
+            </button>
+          </div>
+        </form>
+
+        <article className="rr-admin-panel">
+          <div className="rr-admin-panelHeader">
+            <div>
+              <h2 className="rr-admin-panelTitle">Visual preview</h2>
+              <p className="rr-admin-panelText">
+                Validate the hero image and current publish state.
+              </p>
+            </div>
+            <span
+              className={`rr-admin-badge ${
+                watch("published")
+                  ? "rr-admin-badge--success"
+                  : "rr-admin-badge--warning"
+              }`}
+            >
+              {watch("published") ? "Published" : "Draft"}
+            </span>
+          </div>
+
+          <div className="rr-admin-mediaFrame">
+            <Image
+              src={imageError ? PLACEHOLDER_IMAGE : previewUrl}
+              alt="Product preview"
+              fill
+              sizes="(max-width: 768px) 100vw, 560px"
+              style={{ objectFit: "cover" }}
+              onError={() => setImageError(true)}
+            />
+          </div>
+
+          <div className="rr-admin-listItem">
+            <div className="rr-admin-listHeader">
+              <div>
+                <h3 className="rr-admin-listTitle">Review checklist</h3>
+                <p className="rr-admin-listSubtitle">
+                  Check image quality, copy, and pricing before publishing.
+                </p>
+              </div>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+  );
+}

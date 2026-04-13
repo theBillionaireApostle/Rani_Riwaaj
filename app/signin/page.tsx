@@ -14,6 +14,7 @@ import { useRouter } from "next/navigation";
 import { auth, googleProvider } from "../firebaseClient";
 import { Poppins } from "next/font/google";
 import { Eye, EyeOff } from "lucide-react";
+import { getErrorCode } from "@/lib/error-utils";
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -122,13 +123,14 @@ export default function SignInPage() {
       } else {
         await createUserWithEmailAndPassword(auth, email, password);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      if (err.code?.includes("auth/email-already-in-use")) {
+      const code = getErrorCode(err);
+      if (code?.includes("auth/email-already-in-use")) {
         setError("Email already in use.");
-      } else if (err.code?.includes("auth/invalid-email")) {
+      } else if (code?.includes("auth/invalid-email")) {
         setError("Invalid email address.");
-      } else if (err.code?.includes("auth/wrong-password")) {
+      } else if (code?.includes("auth/wrong-password")) {
         setError("Wrong password.");
       } else {
         setError("Authentication failed.");

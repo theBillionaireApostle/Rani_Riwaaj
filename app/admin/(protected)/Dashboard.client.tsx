@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, @typescript-eslint/no-require-imports */
 "use client";
 
 import React, {
@@ -11,16 +10,18 @@ import React, {
 } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-  faEdit,
-  faTrashAlt,
-  faToggleOn,
-  faToggleOff,
-  faPlus,
-  faSearch,
-} from "@fortawesome/free-solid-svg-icons";
+  PencilLine,
+  Plus,
+  Search,
+  ToggleLeft,
+  ToggleRight,
+  Trash2,
+  WifiOff,
+  X,
+} from "lucide-react";
 import { toast } from "react-toastify";
+import { getErrorMessage } from "@/lib/error-utils";
 import styles from "./Dashboard.module.css";
 
 // Product type definition.
@@ -30,23 +31,41 @@ export interface Product {
   desc: string;
   price: string;
   published?: boolean;
+  justIn?: boolean;
   defaultImage?: { url: string; publicId: string };
   colors?: string[];
   sizes?: string[];
   badge?: string;
+  category?: string;
+  tags?: string[];
 }
 
 interface DashboardProps {
   products: Product[];
+  categoryCount: number;
+  tagCount: number;
+  issues: string[];
 }
 
-interface PreviewData {
-  globalPreviews: string[];
-  colorPreviews: { [color: string]: string[] };
-  // Add other properties as needed.
+type FormFieldValue =
+  | string
+  | boolean
+  | string[]
+  | (File | null)[]
+  | { [color: string]: File[] };
+
+function parsePrice(value: string | number | undefined): number {
+  if (typeof value === "number") return value;
+  if (!value) return 0;
+  return Number.parseFloat(String(value).replace(/[^\d.]/g, "")) || 0;
 }
 
-export default function Dashboard({ products: initialProducts }: DashboardProps) {
+export default function Dashboard({
+  products: initialProducts,
+  categoryCount,
+  tagCount,
+  issues,
+}: DashboardProps) {
   // Global states.
   const [products, setProducts] = useState<Product[]>(initialProducts);
   const [searchTerm, setSearchTerm] = useState("");
@@ -77,10 +96,6 @@ export default function Dashboard({ products: initialProducts }: DashboardProps)
   });
   const [modalError, setModalError] = useState("");
   const [modalLoading, setModalLoading] = useState(false);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [previewData, setPreviewData] = useState<any>(null);
-  const [previewModalOpen, setPreviewModalOpen] = useState(false);
-  const [previewSelectedColor, setPreviewSelectedColor] = useState<string | null>(null);
 
   // New state: enable swatches (optional feature)
   const [swatchesEnabled, setSwatchesEnabled] = useState(false);
@@ -134,8 +149,8 @@ useEffect(() => {
       if (!res.ok) throw new Error("Failed to load categories");
       const data = await res.json();
       setCategories(data);
-    } catch (err) {
-      toast.error("Could not load categories.");
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, "Could not load categories."));
     }
   })();
 }, []);
@@ -169,6 +184,78 @@ const filteredCategories = useMemo(() => {
     return filteredProducts.slice(startIndex, startIndex + itemsPerPage);
   }, [filteredProducts, currentPage]);
 
+  const publishedCount = useMemo(
+    () => products.filter((product) => product.published).length,
+    [products]
+  );
+  const draftCount = products.length - publishedCount;
+  const withImageCount = useMemo(
+    () => products.filter((product) => Boolean(product.defaultImage?.url)).length,
+    [products]
+  );
+  const withCategoryCount = useMemo(
+    () => products.filter((product) => Boolean(product.category)).length,
+    [products]
+  );
+  const withTagsCount = useMemo(
+    () => products.filter((product) => (product.tags?.length ?? 0) > 0).length,
+    [products]
+  );
+  const withVariantsCount = useMemo(
+    () =>
+      products.filter(
+        (product) => (product.colors?.length ?? 0) > 0 || (product.sizes?.length ?? 0) > 0
+      ).length,
+    [products]
+  );
+  const justInCount = useMemo(
+    () =>
+      products.filter(
+        (product) =>
+          product.justIn ||
+          product.badge?.toLowerCase().includes("just") ||
+          product.badge?.toLowerCase().includes("new")
+      ).length,
+    [products]
+  );
+  const catalogValue = useMemo(
+    () => products.reduce((sum, product) => sum + parsePrice(product.price), 0),
+    [products]
+  );
+  const averagePrice = products.length
+    ? Math.round(catalogValue / products.length)
+    : 0;
+  const imageCoverage = products.length
+    ? Math.round((withImageCount / products.length) * 100)
+    : 0;
+  const categoryCoverage = products.length
+    ? Math.round((withCategoryCount / products.length) * 100)
+    : 0;
+  const tagCoverage = products.length
+    ? Math.round((withTagsCount / products.length) * 100)
+    : 0;
+
+  const spotlightProducts = useMemo(
+    () =>
+      [...products]
+        .sort((left, right) => parsePrice(right.price) - parsePrice(left.price))
+        .slice(0, 3),
+    [products]
+  );
+  const attentionProducts = useMemo(
+    () =>
+      products
+        .filter(
+          (product) =>
+            !product.published ||
+            !product.defaultImage?.url ||
+            !(product.desc ?? "").trim() ||
+            !product.category
+        )
+        .slice(0, 4),
+    [products]
+  );
+
   // --- Handlers ---
   const openModal = useCallback(() => setModalOpen(true), []);
   const closeModal = useCallback(() => {
@@ -187,50 +274,39 @@ const filteredCategories = useMemo(() => {
       colorImages: {},
     });
     setCategorySearch("");
-    setPreviewData(null);
-    setPreviewModalOpen(false);
-    setPreviewSelectedColor(null);
     setActiveSwatch(null);
   }, []);
 
-  const handleFieldChange = (field: string, value: any) => {
+  const handleFieldChange = useCallback((field: string, value: FormFieldValue) => {
     setFormValues((prev) => ({ ...prev, [field]: value }));
+  }, []);
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!event.target.files) return;
+
+    const newFiles = Array.from(event.target.files).slice(0, 5);
+    if (newFiles.length === 0) return;
+
+    setImageCount((prev) => {
+      const next = Math.min(5, Math.max(prev, newFiles.length)) as 1 | 2 | 3 | 4 | 5;
+      return next;
+    });
+
+    setFormValues((prev) => {
+      const nextSlots = [...prev.images];
+      let pointer = 0;
+      for (const file of newFiles) {
+        while (pointer < 5 && nextSlots[pointer]) pointer++;
+        if (pointer < 5) nextSlots[pointer] = file;
+      }
+      return { ...prev, images: nextSlots };
+    });
   };
-
-  /**
-   * NEW: Handle multi‑select file upload (fallback for legacy input)
-   */
-  // handleFileChange
-const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-  if (!e.target.files) return;
-
-  const newFiles = Array.from(e.target.files).slice(0, 5);
-  if (newFiles.length === 0) return;
-
-  /* ---------- set imageCount safely ---------- */
-  setImageCount(prev => {
-    const next = Math.min(5, Math.max(prev, newFiles.length)) as 1 | 2 | 3 | 4 | 5;
-    return next;
-  });
-
-  /* ---------- merge the files into formValues.images ---------- */
-  setFormValues(prev => {
-    const nextSlots = [...prev.images];     // preserve existing
-    let ptr = 0;
-    for (const file of newFiles) {
-      while (ptr < 5 && nextSlots[ptr]) ptr++;  // skip filled slots
-      if (ptr < 5) nextSlots[ptr] = file;
-    }
-    return { ...prev, images: nextSlots };
-  });
-};
 
   const handleImageCountChange = (count: number) => {
     setImageCount(count as 1 | 2 | 3 | 4 | 5);
-    setFormValues(prev => {
+    setFormValues((prev) => {
       const next = [...prev.images];
-  
-      /* Clear extra slots only if count got smaller */
       if (count < next.length) {
         for (let i = count; i < 5; i++) next[i] = null;
       }
@@ -245,62 +321,6 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       return { ...prev, images: newArr };
     });
   };
-
-  const handleSwatchFileChange = useCallback((color: string, slot: number, file: File) => {
-    setFormValues((prev) => {
-      const currentFiles = prev.colorImages[color] || [];
-      const updatedFiles = [...currentFiles];
-      updatedFiles[slot] = file;
-      return {
-        ...prev,
-        colorImages: { ...prev.colorImages, [color]: updatedFiles },
-      };
-    });
-  }, []);
-
-  const generateImagePreviews = useCallback((files: (File | null)[]) => {
-    const validFiles = files.filter(Boolean) as File[];
-    return Promise.all(
-      validFiles.map(
-        (file) =>
-          new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result as string);
-            reader.onerror = reject;
-            reader.readAsDataURL(file);
-          })
-      )
-    );
-  }, []);
-
-  const handlePreview = useCallback(async () => {
-    const validGlobals = formValues.images.filter(Boolean) as File[];
-    if (!formValues.name || !formValues.desc || !formValues.price) {
-      setModalError("Please fill out Product Name, Description, and Price.");
-      toast.error("Missing required fields");
-      return;
-    }
-    if (validGlobals.length === 0) {
-      setModalError("Please upload at least one image.");
-      toast.error("Upload at least one global image");
-      return;
-    }
-    try {
-      const globalPreviews = await generateImagePreviews(validGlobals);
-      const colorPreviews: { [c: string]: string[] } = {};
-      for (const c of formValues.colors) {
-        const files = (formValues.colorImages[c] || []) as File[];
-        if (files.length) colorPreviews[c] = await generateImagePreviews(files);
-      }
-      setPreviewSelectedColor(formValues.colors[0] || null);
-      setPreviewData({ ...formValues, globalPreviews, colorPreviews });
-      setPreviewModalOpen(true);
-      setModalError("");
-    } catch {
-      setModalError("Failed to generate previews");
-      toast.error("Preview generation failed");
-    }
-  }, [formValues]);
 
   const addCurrentColor = useCallback(() => {
     if (formValues.colors.length >= 5) {
@@ -329,9 +349,9 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       setProducts((prev) => prev.filter((p) => p._id !== productId));
       if (!toast.isActive("delete-" + productId))
         toast.success("Product deleted successfully.", { toastId: "delete-" + productId, autoClose: 3000 });
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (!toast.isActive("delete-error-" + productId))
-        toast.error(error.message || "Error deleting product.", { toastId: "delete-error-" + productId, autoClose: 3000 });
+        toast.error(getErrorMessage(error, "Error deleting product."), { toastId: "delete-error-" + productId, autoClose: 3000 });
     }
   }, []);
 
@@ -352,9 +372,9 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
           `Product ${updatedProduct.published ? "published" : "unpublished"} successfully.`,
           { toastId: "toggle-" + product._id, autoClose: 3000 }
         );
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (!toast.isActive("toggle-error-" + product._id))
-        toast.error(error.message || "Error updating product status.", { toastId: "toggle-error-" + product._id, autoClose: 3000 });
+        toast.error(getErrorMessage(error, "Error updating product status."), { toastId: "toggle-error-" + product._id, autoClose: 3000 });
     }
   }, []);
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
@@ -439,174 +459,16 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       });
       if (!res.ok) throw new Error("Product creation failed");
   
-      const newProduct = await res.json();      // ✅ await here, outside the setter
-setProducts(prev => [newProduct, ...prev]);
+      const newProduct = (await res.json()) as Product;
+      setProducts((prev) => [newProduct, ...prev]);
       closeModal();
       toast.success("Product created");
-    } catch (err: any) {
-      toast.error(err.message || "Error creating product");
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, "Error creating product"));
     } finally {
       setModalLoading(false);
     }
   }, [formValues, closeModal]);
-
-  // --- Memoized Helper Components ---
-  const HeaderComp = memo(function HeaderComp() {
-    return (
-      <header className={styles.header}>
-        <div className={styles.logo}>Rani Riwaaj</div>
-        <nav className={styles.navLinks}>
-          <Link href="/">Home</Link>
-          <Link href="/shop">Shop</Link>
-          <Link href="/about">About</Link>
-          <Link href="/contact">Contact</Link>
-        </nav>
-      </header>
-    );
-  });
-
-  const FooterComp = memo(function FooterComp() {
-    return (
-      <footer className={styles.footer}>
-        <p>&copy; {new Date().getFullYear()} House of Phulkari. All rights reserved.</p>
-        <div className={styles.footerLinks}>
-          <Link href="/privacy">Privacy Policy</Link>
-          <Link href="/terms">Terms & Conditions</Link>
-        </div>
-      </footer>
-    );
-  });
-
-  const ModalComp = memo(function ModalComp({
-    children,
-    onClose,
-  }: {
-    children: React.ReactNode;
-    onClose: () => void;
-  }) {
-    return (
-      <div className={styles.modalOverlay}>
-        <div className={styles.modal}>
-          <button className={styles.closeButton} onClick={onClose}>
-            &times;
-          </button>
-          {children}
-        </div>
-      </div>
-    );
-  });
-
-  const OfflineModalComp = memo(function OfflineModalComp({
-    onRetry,
-  }: {
-    onRetry: () => void;
-  }) {
-    return (
-      <div className={styles.offlineModalOverlay}>
-        <div className={styles.offlineModal}>
-          <h2>You seem to be offline</h2>
-          <p>Please check your internet connection.</p>
-          <button className={styles.retryButton} onClick={onRetry}>
-            Retry
-          </button>
-        </div>
-      </div>
-    );
-  });
-
-  const ColorPickerComp = memo(function ColorPickerComp({
-    currentColor,
-    onCurrentColorChange,
-    onAddColor,
-  }: {
-    currentColor: string;
-    onCurrentColorChange: (val: string) => void;
-    onAddColor: () => void;
-  }) {
-    return (
-      <div className={styles.colorPickerSection}>
-        <input
-          type="color"
-          value={currentColor}
-          onChange={(e) => onCurrentColorChange(e.target.value)}
-          className={styles.colorPicker}
-        />
-        <button type="button" onClick={onAddColor} className={styles.addColorButton}>
-          <FontAwesomeIcon icon={faPlus} /> Add Color
-        </button>
-      </div>
-    );
-  });
-
-  const RenderColorSwatchesComp = memo(function RenderColorSwatchesComp({
-    colors,
-    activeSwatch,
-    onSwatchClick,
-    onColorImageChange,
-  }: {
-    colors: string[];
-    activeSwatch: string | null;
-    onSwatchClick: (color: string) => void;
-    onColorImageChange: (color: string, e: React.ChangeEvent<HTMLInputElement>) => void;
-  }) {
-    return (
-      <div className={styles.selectedColorsContainer}>
-        {colors.map((color) => (
-          <div key={color} className={styles.selectedColor}>
-            <div
-              className={styles.colorSwatch}
-              style={{ backgroundColor: color }}
-              title="Selected color"
-              onClick={() => onSwatchClick(color)}
-            />
-            <label className={styles.swatchLabel}>{color}</label>
-            {activeSwatch === color && (
-              <div className={styles.swatchUploads}>
-                {[0, 1, 2].map((slot) => (
-                  <div key={slot} className={styles.swatchUpload}>
-                    <input
-                      type="file"
-                      onChange={(e) => {
-                        if (e.target.files && e.target.files[0])
-                          onColorImageChange(color, e);
-                      }}
-                      className={styles.swatchFileInput}
-                    />
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-    );
-  });
-
-  const SizeChipsComp = memo(function SizeChipsComp({
-    selectedSizes,
-    onToggleSize,
-  }: {
-    selectedSizes: string[];
-    onToggleSize: (size: string) => void;
-  }) {
-    const availableSizes = ["XS", "S", "M", "L", "XL", "XXL"];
-    return (
-      <div className={styles.sizeChipsContainer}>
-        {availableSizes.map((size) => (
-          <button
-            key={size}
-            type="button"
-            onClick={() => onToggleSize(size)}
-            className={`${styles.sizeChip} ${
-              selectedSizes.includes(size) ? styles.sizeChipSelected : ""
-            }`}
-          >
-            {size}
-          </button>
-        ))}
-      </div>
-    );
-  });
 
   const handleNameChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -650,15 +512,165 @@ setProducts(prev => [newProduct, ...prev]);
   };
 
   return (
-    <div className={styles.dashboardContainer}>
-      <HeaderComp />
-      <main className={styles.mainContent}>
+    <div className={styles.page}>
+      <section className={styles.hero}>
+        <div className={styles.heroLead}>
+          <span className={styles.heroEyebrow}>Catalog</span>
+          <h1 className={styles.heroTitle}>Catalog operations.</h1>
+          <p className={styles.heroText}>
+            Live product status, media coverage, taxonomy, and publish controls.
+          </p>
+          <div className={styles.heroActions}>
+            <Link
+              href="/admin/analytics"
+              className="rr-admin-button rr-admin-button--primary"
+            >
+              Open Analytics
+            </Link>
+            <Link
+              href="/admin/products/create"
+              className="rr-admin-button rr-admin-button--secondary"
+            >
+              Create Product
+            </Link>
+          </div>
+        </div>
+
+        <div className={styles.heroStats}>
+          <article className={styles.heroStat}>
+            <span className={styles.heroStatLabel}>Products</span>
+            <strong className={styles.heroStatValue}>{products.length}</strong>
+            <p className={styles.heroStatText}>
+              {publishedCount} live · {draftCount} draft
+            </p>
+          </article>
+          <article className={styles.heroStat}>
+            <span className={styles.heroStatLabel}>Catalog Value</span>
+            <strong className={styles.heroStatValue}>
+              ₹{catalogValue.toLocaleString("en-IN")}
+            </strong>
+            <p className={styles.heroStatText}>
+              Avg ₹{averagePrice.toLocaleString("en-IN")}
+            </p>
+          </article>
+          <article className={styles.heroStat}>
+            <span className={styles.heroStatLabel}>Media Coverage</span>
+            <strong className={styles.heroStatValue}>{imageCoverage}%</strong>
+            <p className={styles.heroStatText}>{withImageCount} with hero media</p>
+          </article>
+          <article className={styles.heroStat}>
+            <span className={styles.heroStatLabel}>Ready to Merchandise</span>
+            <strong className={styles.heroStatValue}>{withVariantsCount}</strong>
+            <p className={styles.heroStatText}>Products with sizes or colors</p>
+          </article>
+        </div>
+      </section>
+
+      {issues.length > 0 ? (
+        <section className={styles.issueBanner}>
+          <strong>Snapshot notes</strong>
+          <ul className={styles.issueList}>
+            {issues.map((issue) => (
+              <li key={issue}>{issue}</li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      <section className={styles.insightGrid}>
+        <article className={styles.insightCard}>
+          <div className={styles.insightHeader}>
+            <h2 className={styles.insightTitle}>Readiness</h2>
+            <span className="rr-admin-badge rr-admin-badge--info">Live</span>
+          </div>
+          <p className={styles.insightText}>Core publish coverage.</p>
+          <div className={styles.detailList}>
+            <div className={styles.detailRow}>
+              <span>Categories linked</span>
+              <strong>{categoryCoverage}%</strong>
+            </div>
+            <div className={styles.detailRow}>
+              <span>Tagged products</span>
+              <strong>{tagCoverage}%</strong>
+            </div>
+            <div className={styles.detailRow}>
+              <span>Just-in highlights</span>
+              <strong>{justInCount}</strong>
+            </div>
+            <div className={styles.detailRow}>
+              <span>Available categories</span>
+              <strong>{categoryCount}</strong>
+            </div>
+            <div className={styles.detailRow}>
+              <span>Available tags</span>
+              <strong>{tagCount}</strong>
+            </div>
+          </div>
+        </article>
+
+        <article className={styles.insightCard}>
+          <div className={styles.insightHeader}>
+            <h2 className={styles.insightTitle}>Spotlight</h2>
+            <span className="rr-admin-badge rr-admin-badge--success">Value</span>
+          </div>
+          <p className={styles.insightText}>Highest-value current items.</p>
+          <ul className={styles.insightList}>
+            {spotlightProducts.map((product) => (
+              <li key={product._id} className={styles.insightListItem}>
+                <div>
+                  <strong>{product.name}</strong>
+                  <p>{product.badge || "No badge"}</p>
+                </div>
+                <span>₹{parsePrice(product.price).toLocaleString("en-IN")}</span>
+              </li>
+            ))}
+          </ul>
+        </article>
+
+        <article className={styles.insightCard}>
+          <div className={styles.insightHeader}>
+            <h2 className={styles.insightTitle}>Needs attention</h2>
+            <span className="rr-admin-badge rr-admin-badge--warning">Action</span>
+          </div>
+          <p className={styles.insightText}>Drafts and incomplete listings.</p>
+          <ul className={styles.insightList}>
+            {attentionProducts.length > 0 ? (
+              attentionProducts.map((product) => (
+                <li key={product._id} className={styles.insightListItem}>
+                  <div>
+                    <strong>{product.name}</strong>
+                    <p>
+                      {!product.published
+                        ? "Draft"
+                        : !product.defaultImage?.url
+                          ? "Missing hero image"
+                          : !product.category
+                            ? "Category missing"
+                            : "Description needs work"}
+                    </p>
+                  </div>
+                  <Link href={`/admin/products/${product._id}/edit`}>Open</Link>
+                </li>
+              ))
+            ) : (
+              <li className={styles.insightListItem}>
+                <div>
+                  <strong>No urgent product gaps</strong>
+                  <p>The current snapshot looks structurally healthy.</p>
+                </div>
+              </li>
+            )}
+          </ul>
+        </article>
+      </section>
+
+      <section className={styles.catalogPanel}>
         <div className={styles.topBar}>
           <div className={styles.searchWrapper}>
-            <FontAwesomeIcon icon={faSearch} className={styles.searchIcon} />
+            <Search size={18} className={styles.searchIcon} />
             <input
               type="text"
-              placeholder="Search products..."
+              placeholder="Search products"
               value={searchTerm}
               onChange={(e) => {
                 setSearchTerm(e.target.value);
@@ -668,11 +680,20 @@ setProducts(prev => [newProduct, ...prev]);
             />
           </div>
           <button onClick={openModal} className={styles.addButton}>
-            <FontAwesomeIcon icon={faPlus} /> Add New Product
+            <Plus size={16} /> New Product
           </button>
         </div>
         {paginatedProducts.length === 0 ? (
-          <p className={styles.noProducts}>No products found.</p>
+          <div className={styles.emptyState}>
+            <strong>
+              {searchTerm ? "No products match the current search." : "No products yet."}
+            </strong>
+            <p>
+              {searchTerm
+                ? "Adjust the search term or clear it to see the full catalog."
+                : "Create the first product to start shaping the catalog."}
+            </p>
+          </div>
         ) : (
           <ul className={styles.productList}>
             {paginatedProducts.map((product) => (
@@ -691,37 +712,54 @@ setProducts(prev => [newProduct, ...prev]);
                     <h2 className={styles.productName}>{product.name}</h2>
                     <p className={styles.productDesc}>{product.desc}</p>
                     <p className={styles.productPrice}>Price: {product.price}</p>
+                    <div className={styles.productMeta}>
+                      <span
+                        className={`rr-admin-badge ${
+                          product.published
+                            ? "rr-admin-badge--success"
+                            : "rr-admin-badge--warning"
+                        }`}
+                      >
+                        {product.published ? "Published" : "Draft"}
+                      </span>
+                      <span className="rr-admin-badge rr-admin-badge--info">
+                        {product.category ? "Category linked" : "Category pending"}
+                      </span>
+                      <span className="rr-admin-badge rr-admin-badge--info">
+                        {product.tags?.length ? `${product.tags.length} tags` : "No tags"}
+                      </span>
+                    </div>
                     {product.sizes && product.sizes.length > 0 && (
                       <div className={styles.sizesContainer}>
-                        {product.sizes.map((size: any, idx: number) => (
+                        {product.sizes.map((size, idx) => (
                           <span key={idx} className={styles.sizeChip}>
-                            {typeof size === "object"
-                              ? `${size.label} (${size.badge})`
-                              : size}
+                            {size}
                           </span>
                         ))}
                       </div>
                     )}
                   </div>
                   <div className={styles.actionButtons}>
-                    <Link href={`/admin/products/${product._id}/edit`}>
-                      <button title="Edit" className={styles.iconButton}>
-                        <FontAwesomeIcon icon={faEdit} />
-                      </button>
+                    <Link
+                      href={`/admin/products/${product._id}/edit`}
+                      title="Edit"
+                      className={styles.iconButton}
+                    >
+                      <PencilLine size={16} />
                     </Link>
                     <button
                       onClick={() => handleDelete(product._id)}
                       className={styles.iconButton}
                       title="Delete"
                     >
-                      <FontAwesomeIcon icon={faTrashAlt} />
+                      <Trash2 size={16} />
                     </button>
                     <button
                       onClick={() => handleToggle(product)}
                       className={styles.toggleButton}
                       title={product.published ? "Unpublish" : "Publish"}
                     >
-                      <FontAwesomeIcon icon={product.published ? faToggleOn : faToggleOff} />
+                      {product.published ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
                     </button>
                   </div>
                 </div>
@@ -748,14 +786,13 @@ setProducts(prev => [newProduct, ...prev]);
             Next
           </button>
         </div>
-      </main>
-      <FooterComp />
+      </section>
       {modalOpen && (
         <ModalComp onClose={closeModal}>
-          <h2>Add New Product</h2>
+          <h2>New product</h2>
           {modalError && <p className={styles.modalError}>{modalError}</p>}
           <form onSubmit={handleSubmit} className={styles.modalForm}>
-            <label className={styles.modalLabel}>Product Name:</label>
+            <label className={styles.modalLabel}>Product name</label>
             <input
               type="text"
               value={formValues.name}
@@ -763,14 +800,14 @@ setProducts(prev => [newProduct, ...prev]);
               className={styles.modalInput}
               required
             />
-            <label className={styles.modalLabel}>Description:</label>
+            <label className={styles.modalLabel}>Description</label>
             <textarea
               value={formValues.desc}
               onChange={handleDescChange}
               className={styles.modalTextarea}
               required
             />
-            <label className={styles.modalLabel}>Price (INR):</label>
+            <label className={styles.modalLabel}>Price (INR)</label>
             <input
               type="text"
               value={formValues.price}
@@ -779,25 +816,47 @@ setProducts(prev => [newProduct, ...prev]);
               required
             />
 
-<label className={styles.modalLabel}>Category (optional):</label>
-<div className={styles.categoryDropdown} ref={containerRef}>
-  <input
-    type="text"
-    placeholder="Search categories…"
-    value={categorySearch}
-    onFocus={() => setIsDropdownOpen(true)}
-    onChange={e => {
-      setCategorySearch(e.target.value);
-      setFormValues(prev => ({ ...prev, categoryId: "" }));
-      setIsDropdownOpen(true);
-    }}
-    className={styles.modalInput}
-  />
+            <label className={styles.modalLabel}>Category</label>
+            <div className={styles.categoryDropdown} ref={containerRef}>
+              <input
+                type="text"
+                placeholder="Search categories"
+                value={categorySearch}
+                onFocus={() => setIsDropdownOpen(true)}
+                onChange={(event) => {
+                  setCategorySearch(event.target.value);
+                  setFormValues((prev) => ({ ...prev, categoryId: "" }));
+                  setIsDropdownOpen(true);
+                }}
+                className={styles.modalInput}
+              />
+              {formValues.categoryId ? (
+                <p className="rr-admin-mutedText">Selected: {categorySearch}</p>
+              ) : null}
+              {isDropdownOpen ? (
+                <ul className={`${styles.dropdownList} ${styles.open}`}>
+                  {filteredCategories.length > 0 ? (
+                    filteredCategories.map((category) => (
+                      <li
+                        key={category._id}
+                        className={styles.dropdownItem}
+                        onClick={() => {
+                          setFormValues((prev) => ({ ...prev, categoryId: category._id }));
+                          setCategorySearch(category.name);
+                          setIsDropdownOpen(false);
+                        }}
+                      >
+                        {category.name}
+                      </li>
+                    ))
+                  ) : (
+                    <li className={styles.dropdownItemDisabled}>No categories found</li>
+                  )}
+                </ul>
+              ) : null}
+            </div>
 
-
-
-  {/* DYNAMIC IMAGE COUNT SELECTOR */}
-  <label className={styles.modalLabel}>How many images? (max 5)</label>
+            <label className={styles.modalLabel}>Image slots</label>
             <select
               value={imageCount}
               onChange={(e) => handleImageCountChange(Number(e.target.value))}
@@ -810,57 +869,25 @@ setProducts(prev => [newProduct, ...prev]);
               ))}
             </select>
 
-
-            {/* IMAGE INPUTS RENDERED BASED ON SELECTION */}
-            <label className={styles.modalLabel}>Upload Images:</label>
-<div className={styles.dynamicImagesWrapper}>
-{Array.from({ length: imageCount }).map((_, idx) => (
-  <input
-    key={idx}
-    type="file"
-    onChange={e =>
-      handleSingleFileChange(
-        idx,
-        e.target.files ? e.target.files[0] : null
-      )
-    }
-    className={styles.modalInput}
-    /* no required */
-  />
-  ))}
-</div>
-
-  {/* only render when open */}
-  {isDropdownOpen && filteredCategories.length > 0 && (
-  <ul className={`${styles.dropdownList} ${styles.open}`}>
-    {filteredCategories.map(c => (
-      <li
-        key={c._id}
-        className={styles.dropdownItem}
-        onClick={() => {
-          setFormValues(prev => ({ ...prev, categoryId: c._id }));
-          setCategorySearch(c.name);
-          setIsDropdownOpen(false);
-        }}
-      >
-        {c.name}
-      </li>
-    ))}
-  </ul>
-)}
-</div>
-
-{/* fallback when search yields nothing */}
-{isDropdownOpen && filteredCategories.length === 0 && (
-  <ul className={styles.dropdownList}>
-    <li className={styles.dropdownItemDisabled}>No categories found</li>
-  </ul>
-)}
+            <label className={styles.modalLabel}>Primary images</label>
+            <div className={styles.dynamicImagesWrapper}>
+              {Array.from({ length: imageCount }).map((_, idx) => (
+                <input
+                  key={idx}
+                  type="file"
+                  onChange={(event) =>
+                    handleSingleFileChange(
+                      idx,
+                      event.target.files ? event.target.files[0] : null
+                    )
+                  }
+                  className={styles.modalInput}
+                />
+              ))}
+            </div>
 
 
-            <label className={styles.modalLabel}>
-              Upload Global Images (optional):
-            </label>
+            <label className={styles.modalLabel}>Extra gallery images</label>
             <input
               type="file"
               multiple
@@ -874,12 +901,12 @@ setProducts(prev => [newProduct, ...prev]);
                   checked={swatchesEnabled}
                   onChange={(e) => setSwatchesEnabled(e.target.checked)}
                 />{" "}
-                Enable Color Swatches
+                Enable color swatches
               </label>
             </div>
             {swatchesEnabled && (
               <>
-                <label className={styles.modalLabel}>Select Colors (max 5):</label>
+                <label className={styles.modalLabel}>Colors</label>
                 <ColorPickerComp
                   currentColor={currentColor}
                   onCurrentColorChange={setCurrentColor}
@@ -897,7 +924,7 @@ setProducts(prev => [newProduct, ...prev]);
                 )}
               </>
             )}
-            <label className={styles.modalLabel}>Select Sizes:</label>
+            <label className={styles.modalLabel}>Sizes</label>
             <SizeChipsComp
               selectedSizes={formValues.sizes}
               onToggleSize={(size) => {
@@ -911,9 +938,7 @@ setProducts(prev => [newProduct, ...prev]);
                 }
               }}
             />
-            <label className={styles.modalLabel}>
-              Overall Badge (optional):
-            </label>
+            <label className={styles.modalLabel}>Badge</label>
             <input
               type="text"
               value={formValues.badge}
@@ -921,7 +946,7 @@ setProducts(prev => [newProduct, ...prev]);
               className={styles.modalInput}
             />
             <label className={styles.modalLabel}>
-              Published:{" "}
+              Published{" "}
               <input
                 type="checkbox"
                 checked={formValues.published}
@@ -940,7 +965,7 @@ setProducts(prev => [newProduct, ...prev]);
                     <span className={styles.spinnerSmall}></span> Saving...
                   </>
                 ) : (
-                  "Publish"
+                  "Save product"
                 )}
               </button>
               <button
@@ -959,36 +984,6 @@ setProducts(prev => [newProduct, ...prev]);
   );
 }
 
-//////////////////////////////////////////////
-// External Memoized Helper Components
-//////////////////////////////////////////////
-
-const HeaderComp = memo(function HeaderComp() {
-  return (
-    <header className={styles.header}>
-      <div className={styles.logo}>House of Phulkari</div>
-      <nav className={styles.navLinks}>
-        <Link href="/">Home</Link>
-        <Link href="/shop">Shop</Link>
-        <Link href="/about">About</Link>
-        <Link href="/contact">Contact</Link>
-      </nav>
-    </header>
-  );
-});
-
-const FooterComp = memo(function FooterComp() {
-  return (
-    <footer className={styles.footer}>
-      <p>&copy; {new Date().getFullYear()} House of Phulkari. All rights reserved.</p>
-      <div className={styles.footerLinks}>
-        <Link href="/privacy">Privacy Policy</Link>
-        <Link href="/terms">Terms & Conditions</Link>
-      </div>
-    </footer>
-  );
-});
-
 const ModalComp = memo(function ModalComp({
   children,
   onClose,
@@ -999,8 +994,13 @@ const ModalComp = memo(function ModalComp({
   return (
     <div className={styles.modalOverlay}>
       <div className={styles.modal}>
-        <button className={styles.closeButton} onClick={onClose}>
-          &times;
+        <button
+          type="button"
+          className={styles.closeButton}
+          aria-label="Close product form"
+          onClick={onClose}
+        >
+          <X size={18} />
         </button>
         {children}
       </div>
@@ -1016,9 +1016,10 @@ const OfflineModalComp = memo(function OfflineModalComp({
   return (
     <div className={styles.offlineModalOverlay}>
       <div className={styles.offlineModal}>
-        <h2>You seem to be offline</h2>
-        <p>Please check your internet connection.</p>
-        <button className={styles.retryButton} onClick={onRetry}>
+        <WifiOff size={22} />
+        <h2>Offline</h2>
+        <p>Reconnect to keep product changes and publish actions available.</p>
+        <button type="button" className={styles.retryButton} onClick={onRetry}>
           Retry
         </button>
       </div>
@@ -1044,7 +1045,7 @@ const ColorPickerComp = memo(function ColorPickerComp({
         className={styles.colorPicker}
       />
       <button type="button" onClick={onAddColor} className={styles.addColorButton}>
-        <FontAwesomeIcon icon={faPlus} /> Add Color
+        <Plus size={14} /> Add color
       </button>
     </div>
   );

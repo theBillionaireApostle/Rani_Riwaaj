@@ -17,6 +17,7 @@ import { auth } from "../../firebaseClient";
 
 import type { GalleryImage } from "./page";
 import styles from "./page.module.css";
+import { getErrorMessage } from "@/lib/error-utils";
 
 interface Props {
   product: {
@@ -32,6 +33,7 @@ interface Props {
     sku: string;             // e.g. "A1B2C3"
     colors?: string[];
     sizes?: string[];
+    defaultImage?: { url: string };
   };
   gallery: GalleryImage[];
   whatsappNumber: string;    // e.g. "+919041798129"
@@ -73,9 +75,6 @@ export default function ProductClientView({
   setBusy(true);
 
   try {
-    // pick the correct backend in dev & prod
-    const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "";
-
     const res = await fetch(`https://rani-riwaaj-backend-ylbq.vercel.app/api/cart`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -100,8 +99,8 @@ export default function ProductClientView({
     }
 
     toast.success("Added to cart!", { autoClose: 2000 });
-  } catch (err: any) {
-    toast.error(err.message || "Could not add – please try again.", {
+  } catch (err: unknown) {
+    toast.error(getErrorMessage(err, "Could not add – please try again."), {
       autoClose: 2500,
     });
   } finally {

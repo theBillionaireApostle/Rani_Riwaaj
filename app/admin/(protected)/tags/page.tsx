@@ -1,12 +1,9 @@
-
-
-// app/admin/(protected)/tags/page.tsx
 "use client";
 
-import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { Plus, Edit2, Trash2, Search } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Edit2, Plus, Search, Tags, Trash2, X } from "lucide-react";
 import { toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import { getErrorMessage } from "@/lib/error-utils";
 
 interface Tag {
   _id: string;
@@ -14,385 +11,376 @@ interface Tag {
   slug: string;
 }
 
+const BACKEND_BASE =
+  process.env.NEXT_PUBLIC_BACKEND_URL ||
+  "https://rani-riwaaj-backend-ylbq.vercel.app";
+
+function slugify(value: string) {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
 export default function TagsPage() {
   const [tags, setTags] = useState<Tag[]>([]);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
-  const perPage = 10;
-
+  const [loadingTags, setLoadingTags] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [current, setCurrent] = useState<Partial<Tag>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const baseURL =
-    process.env.NEXT_PUBLIC_BACKEND_URL ||
-    "https://rani-riwaaj-backend-ylbq.vercel.app";
+  const perPage = 10;
 
-  // Fetch tags
   const fetchTags = useCallback(async () => {
+    setLoadingTags(true);
     try {
-      const res = await fetch(`${baseURL}/api/tags`);
-      if (!res.ok) throw new Error("Failed to load tags");
-      const data = await res.json();
+      const response = await fetch(`${BACKEND_BASE}/api/tags`);
+      if (!response.ok) throw new Error("Failed to load tags.");
+      const data: Tag[] = await response.json();
       setTags(data);
-    } catch (err: any) {
-      toast.error(err.message || "Error loading tags");
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, "Unable to load tags."));
+    } finally {
+      setLoadingTags(false);
     }
-  }, [baseURL]);
+  }, []);
 
   useEffect(() => {
     fetchTags();
   }, [fetchTags]);
 
-  // Filter & paginate
-  const filtered = useMemo(
+  const filteredTags = useMemo(
     () =>
-      tags.filter((t) =>
-        t.name.toLowerCase().includes(search.toLowerCase())
+      tags.filter((tag) =>
+        [tag.name, tag.slug]
+          .join(" ")
+          .toLowerCase()
+          .includes(search.trim().toLowerCase())
       ),
     [tags, search]
   );
-  const totalPages = Math.ceil(filtered.length / perPage);
-  const paged = useMemo(
-    () =>
-      filtered.slice((page - 1) * perPage, (page - 1) * perPage + perPage),
-    [filtered, page]
+
+  const totalPages = Math.max(1, Math.ceil(filteredTags.length / perPage));
+  const visibleTags = useMemo(
+    () => filteredTags.slice((page - 1) * perPage, page * perPage),
+    [filteredTags, page]
   );
 
-  // Modal controls
   const openAdd = () => {
     setIsEditing(false);
     setCurrent({});
     setError("");
     setModalOpen(true);
   };
+
   const openEdit = (tag: Tag) => {
     setIsEditing(true);
     setCurrent(tag);
     setError("");
     setModalOpen(true);
   };
-  const closeModal = () => setModalOpen(false);
 
-  // Create or update tag
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!current.name || !current.slug) {
+  const closeModal = () => {
+    setModalOpen(false);
+    setIsEditing(false);
+    setCurrent({});
+    setError("");
+  };
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const name = current.name?.trim();
+    const slug = current.slug?.trim();
+
+    if (!name || !slug) {
       setError("Both name and slug are required.");
       return;
     }
+
     setLoading(true);
+
     try {
-      const url = isEditing
-        ? `${baseURL}/api/tags/${current._id}`
-        : `${baseURL}/api/tags`;
-      const method = isEditing ? "PATCH" : "POST";
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: current.name,
-          slug: current.slug,
-        }),
-      });
-      if (!res.ok) throw new Error(await res.text());
-      toast.success(`Tag ${isEditing ? "updated" : "created"}!`);
+      const response = await fetch(
+        isEditing ? `${BACKEND_BASE}/api/tags/${current._id}` : `${BACKEND_BASE}/api/tags`,
+        {
+          method: isEditing ? "PATCH" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, slug }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(await response.text());
+      }
+
+      toast.success(`Tag ${isEditing ? "updated" : "created"} successfully.`);
       closeModal();
       fetchTags();
-    } catch (err: any) {
-      setError(err.message || "Operation failed.");
-      toast.error(err.message || "Operation failed.");
+    } catch (err: unknown) {
+      const message = getErrorMessage(err, "Unable to save tag.");
+      setError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
   };
 
-  // Delete tag
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this tag?")) return;
+
     try {
-      const res = await fetch(`${baseURL}/api/tags/${id}`, {
+      const response = await fetch(`${BACKEND_BASE}/api/tags/${id}`, {
         method: "DELETE",
       });
-      if (!res.ok) throw new Error("Delete failed");
-      toast.success("Tag deleted");
+
+      if (!response.ok) {
+        throw new Error("Delete failed.");
+      }
+
+      toast.success("Tag deleted.");
       fetchTags();
-    } catch (err: any) {
-      toast.error(err.message || "Delete failed");
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, "Delete failed."));
     }
   };
 
   return (
-    <div className="container">
-      <h1>Manage Tags</h1>
-
-      <div className="controls">
-        <div className="search">
-          <Search size={20} />
-          <input
-            type="text"
-            placeholder="Search tags..."
-            value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-          />
+    <section className="rr-admin-page">
+      <div className="rr-admin-pageIntro">
+        <div className="rr-admin-pageLead">
+          <span className="rr-admin-kicker">Structure</span>
+          <h1 className="rr-admin-pageTitle">Tags</h1>
+          <p className="rr-admin-pageDescription">
+            Keep tag taxonomy clean and usable.
+          </p>
         </div>
-        <button className="btn add" onClick={openAdd}>
-          <Plus size={16} /> Add Tag
-        </button>
+        <div className="rr-admin-actions">
+          <button
+            type="button"
+            className="rr-admin-button rr-admin-button--primary"
+            onClick={openAdd}
+          >
+            <Plus size={16} />
+            New tag
+          </button>
+        </div>
       </div>
 
-      <ul className="list">
-        {paged.map((t) => (
-          <li key={t._id}>
-            <span className="tag-name">{t.name}</span>
-            <span className="tag-slug">/{t.slug}</span>
-            <div className="actions">
-              <button onClick={() => openEdit(t)}><Edit2 size={16} /></button>
-              <button onClick={() => handleDelete(t._id)}><Trash2 size={16} /></button>
+      <div className="rr-admin-statGrid">
+        <article className="rr-admin-statCard">
+          <span className="rr-admin-statLabel">Tags</span>
+          <strong className="rr-admin-statValue">{tags.length}</strong>
+          <span className="rr-admin-statMeta">Current tag records in the system.</span>
+        </article>
+        <article className="rr-admin-statCard">
+          <span className="rr-admin-statLabel">Visible now</span>
+          <strong className="rr-admin-statValue">{filteredTags.length}</strong>
+          <span className="rr-admin-statMeta">Matching the active search filter.</span>
+        </article>
+        <article className="rr-admin-statCard">
+          <span className="rr-admin-statLabel">Page size</span>
+          <strong className="rr-admin-statValue">{perPage}</strong>
+          <span className="rr-admin-statMeta">Tags shown per page in this view.</span>
+        </article>
+        <article className="rr-admin-statCard">
+          <span className="rr-admin-statLabel">Pages</span>
+          <strong className="rr-admin-statValue">{totalPages}</strong>
+          <span className="rr-admin-statMeta">Current pagination depth.</span>
+        </article>
+      </div>
+
+      <div className="rr-admin-panel">
+        <div className="rr-admin-toolbar">
+          <label className="rr-admin-search">
+            <span className="rr-admin-searchLabel">Search tags</span>
+            <div className="rr-admin-inlineSearch">
+              <Search size={18} />
+              <input
+                className="rr-admin-input"
+                type="text"
+                placeholder="Search by name or slug"
+                value={search}
+                onChange={(event) => {
+                  setSearch(event.target.value);
+                  setPage(1);
+                }}
+              />
             </div>
-          </li>
-        ))}
-      </ul>
+          </label>
 
-      {totalPages > 1 && (
-        <div className="pagination">
-          <button disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>Prev</button>
-          <span>Page {page} of {totalPages}</span>
-          <button disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>Next</button>
+          <button
+            type="button"
+            className="rr-admin-button rr-admin-button--secondary"
+            onClick={openAdd}
+          >
+            <Plus size={16} />
+            Add tag
+          </button>
         </div>
-      )}
 
-      {modalOpen && (
-        <div className="modal-overlay">
-          <div className="modal">
-            <h2>{isEditing ? "Edit Tag" : "New Tag"}</h2>
-            {error && <p className="error">{error}</p>}
-            <form onSubmit={handleSubmit}>
-              <label>Name</label>
-              <input
-                type="text"
-                value={current.name || ""}
-                onChange={(e) => setCurrent((c) => ({ ...c, name: e.target.value }))}
-                required
-              />
-              <label>Slug</label>
-              <input
-                type="text"
-                value={current.slug || ""}
-                onChange={(e) => setCurrent((c) => ({ ...c, slug: e.target.value }))}
-                required
-              />
-              <div className="modal-actions">
-                <button type="button" onClick={closeModal} className="btn cancel">
+        {loadingTags ? (
+          <div className="rr-admin-emptyState">
+            <strong>Loading tags</strong>
+            <p>Fetching the latest taxonomy structure.</p>
+          </div>
+        ) : visibleTags.length === 0 ? (
+          <div className="rr-admin-emptyState">
+            <Tags size={28} />
+            <strong>{search ? "No tags match the current search." : "No tags yet."}</strong>
+            <p>
+              {search
+                ? "Adjust the search term to explore the full tag list."
+                : "Create the first tag to start organizing featured product groups."}
+            </p>
+          </div>
+        ) : (
+          <ul className="rr-admin-list">
+            {visibleTags.map((tag) => (
+              <li key={tag._id} className="rr-admin-listItem">
+                <div className="rr-admin-listHeader">
+                  <div>
+                    <h2 className="rr-admin-listTitle">{tag.name}</h2>
+                    <p className="rr-admin-listSubtitle">/{tag.slug}</p>
+                  </div>
+                  <span className="rr-admin-badge rr-admin-badge--info">Tag</span>
+                </div>
+
+                <div className="rr-admin-listMeta">
+                  <span className="rr-admin-mutedText">
+                    Use this tag for product grouping, storefront filters, and analytics
+                    context.
+                  </span>
+                </div>
+
+                <div className="rr-admin-listActions">
+                  <button
+                    type="button"
+                    className="rr-admin-button rr-admin-button--secondary"
+                    onClick={() => openEdit(tag)}
+                  >
+                    <Edit2 size={16} />
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    className="rr-admin-button rr-admin-button--danger"
+                    onClick={() => handleDelete(tag._id)}
+                  >
+                    <Trash2 size={16} />
+                    Delete
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <div className="rr-admin-toolbar">
+          <span className="rr-admin-mutedText">
+            Page {page} of {totalPages}
+          </span>
+          <div className="rr-admin-actions">
+            <button
+              type="button"
+              className="rr-admin-button rr-admin-button--secondary"
+              disabled={page <= 1}
+              onClick={() => setPage((currentPage) => currentPage - 1)}
+            >
+              Previous
+            </button>
+            <button
+              type="button"
+              className="rr-admin-button rr-admin-button--secondary"
+              disabled={page >= totalPages}
+              onClick={() => setPage((currentPage) => currentPage + 1)}
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {modalOpen ? (
+        <div className="rr-admin-modalBackdrop">
+          <div className="rr-admin-modal">
+            <div className="rr-admin-modalHeader">
+              <h2 className="rr-admin-modalTitle">
+                {isEditing ? "Edit tag" : "Create tag"}
+              </h2>
+              <button
+                type="button"
+                className="rr-admin-iconButton"
+                onClick={closeModal}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmit} className="rr-admin-grid">
+              {error ? <p className="rr-admin-fieldError">{error}</p> : null}
+
+              <label className="rr-admin-field">
+                <span className="rr-admin-fieldLabel">Name</span>
+                <input
+                  className="rr-admin-input"
+                  type="text"
+                  value={current.name || ""}
+                  onChange={(event) =>
+                    setCurrent((tag) => {
+                      const name = event.target.value;
+                      const previousSlug = tag.slug || "";
+                      const shouldSyncSlug =
+                        !isEditing || !previousSlug || previousSlug === slugify(tag.name || "");
+
+                      return {
+                        ...tag,
+                        name,
+                        slug: shouldSyncSlug ? slugify(name) : previousSlug,
+                      };
+                    })
+                  }
+                  required
+                />
+              </label>
+
+              <label className="rr-admin-field">
+                <span className="rr-admin-fieldLabel">Slug</span>
+                <input
+                  className="rr-admin-input"
+                  type="text"
+                  value={current.slug || ""}
+                  onChange={(event) =>
+                    setCurrent((tag) => ({ ...tag, slug: slugify(event.target.value) }))
+                  }
+                  required
+                />
+              </label>
+
+              <div className="rr-admin-modalActions">
+                <button
+                  type="button"
+                  className="rr-admin-button rr-admin-button--ghost"
+                  onClick={closeModal}
+                >
                   Cancel
                 </button>
-                <button type="submit" disabled={loading} className="btn save">
-                  {loading ? "Saving..." : "Save"}
+                <button
+                  type="submit"
+                  className="rr-admin-button rr-admin-button--primary"
+                  disabled={loading}
+                >
+                  {loading ? "Saving..." : isEditing ? "Save changes" : "Create tag"}
                 </button>
               </div>
             </form>
           </div>
         </div>
-      )}
-
-      <style jsx>{`
-        .container {
-          max-width: 800px;
-          margin: auto;
-          padding: 2rem;
-          font-family: Poppins, sans-serif;
-          color: #333;
-        }
-        h1 {
-          text-align: center;
-          margin-bottom: 1.5rem;
-          font-size: 1.75rem;
-          font-weight: 600;
-        }
-        .controls {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 1.5rem;
-        }
-        .search {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          padding: 0.5rem 0.75rem;
-          border: 1px solid #ccc;
-          border-radius: 8px;
-          background: #fff;
-          transition: border-color 0.2s ease;
-        }
-        .search input {
-          border: none;
-          outline: none;
-          font-size: 1rem;
-          flex: 1;
-        }
-        .search:hover,
-        .search:focus-within {
-          border-color: #0070f3;
-        }
-        .btn {
-          display: inline-flex;
-          align-items: center;
-          gap: 0.5rem;
-          padding: 0.6rem 1.2rem;
-          border: none;
-          border-radius: 8px;
-          cursor: pointer;
-          font-weight: 500;
-          transition: background 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
-          box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-        }
-        .btn.add {
-          background: #0070f3;
-          color: #fff;
-        }
-        .btn.add:hover {
-          background: #005bb5;
-          transform: translateY(-2px);
-          box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        }
-        .list {
-          list-style: none;
-          margin: 0;
-          padding: 0;
-          border-top: 1px solid #eee;
-        }
-        .list li {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 0.75rem 1rem;
-          border-bottom: 1px solid #eee;
-          transition: background 0.2s ease;
-        }
-        .list li:hover {
-          background: #fafafa;
-        }
-        .tag-name {
-          font-weight: 500;
-          font-size: 1rem;
-        }
-        .tag-slug {
-          color: #666;
-          margin-left: 0.5rem;
-          font-size: 0.9rem;
-        }
-        .actions button {
-          background: none;
-          border: none;
-          cursor: pointer;
-          color: #555;
-          margin-left: 0.5rem;
-          transition: color 0.2s ease;
-        }
-        .actions button:hover {
-          color: #000;
-        }
-        .pagination {
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          gap: 1rem;
-          margin-top: 1.5rem;
-        }
-        .pagination button {
-          padding: 0.5rem 1rem;
-          border: 1px solid #ccc;
-          background: #fff;
-          cursor: pointer;
-          border-radius: 6px;
-          transition: background 0.2s ease, transform 0.1s ease;
-        }
-        .pagination button:hover:not(:disabled) {
-          background: #f0f0f0;
-          transform: translateY(-1px);
-        }
-        .pagination button:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
-        }
-        /* Modal */
-        .modal-overlay {
-          position: fixed;
-          top: 0; left: 0;
-          width: 100vw; height: 100vh;
-          background: rgba(0,0,0,0.45);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          z-index: 1000;
-        }
-        .modal {
-          background: #fff;
-          padding: 2rem;
-          border-radius: 12px;
-          width: 90%;
-          max-width: 450px;
-          box-shadow: 0 8px 20px rgba(0,0,0,0.15);
-          position: relative;
-        }
-        .modal h2 {
-          margin-top: 0;
-          margin-bottom: 1.25rem;
-          font-size: 1.5rem;
-          font-weight: 600;
-          color: #222;
-        }
-        .error {
-          color: #e63946;
-          font-size: 0.9rem;
-        }
-        .modal form {
-          display: flex;
-          flex-direction: column;
-          gap: 1rem;
-        }
-        .modal form label {
-          font-weight: 500;
-          margin-bottom: 0.25rem;
-        }
-        .modal form input {
-          padding: 0.65rem 0.75rem;
-          border: 1px solid #ccc;
-          border-radius: 6px;
-          font-size: 1rem;
-          transition: border-color 0.2s ease, box-shadow 0.2s ease;
-        }
-        .modal form input:focus {
-          border-color: #0070f3;
-          box-shadow: 0 0 0 3px rgba(0,112,243,0.15);
-          outline: none;
-        }
-        .modal-actions {
-          display: flex;
-          justify-content: flex-end;
-          gap: 1rem;
-          margin-top: 1rem;
-        }
-        .btn.cancel {
-          background: #eee;
-          color: #333;
-        }
-        .btn.cancel:hover {
-          background: #ddd;
-        }
-        .btn.save {
-          background: #0070f3;
-          color: #fff;
-        }
-        .btn.save:hover:not(:disabled) {
-          background: #005bb5;
-          transform: translateY(-1px);
-          box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        }
-      `}</style>
-    </div>
+      ) : null}
+    </section>
   );
 }

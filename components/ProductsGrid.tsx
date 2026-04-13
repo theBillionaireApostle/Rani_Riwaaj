@@ -12,6 +12,7 @@ import { auth }                      from "../app/firebaseClient"; // adjust as 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCartPlus, faHeart, faStar } from "@fortawesome/free-solid-svg-icons";
 import { useWishlist } from "@/lib/useWishlist";
+import { getErrorMessage } from "@/lib/error-utils";
 
 import styles from "./productsGrid.module.css";
 
@@ -30,13 +31,6 @@ export interface Product {
 
 interface Props {
   products: Product[];
-}
-
-interface CartItem {
-  productId: string;
-  name: string;
-  price: number;
-  quantity: number;
 }
 
 export function ProductsGrid({ products }: Props) {
@@ -85,16 +79,18 @@ export function ProductsGrid({ products }: Props) {
         }
       );
 
-      const data = await res.json();
+      const data: { error?: string; message?: string } = await res.json();
       if (!res.ok) {
         // will catch your route’s 400 errors
         throw new Error(data.error || data.message || "Failed to update cart");
       }
 
       toast.success("Added to cart!", { autoClose: 2000 });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Cart update error:", err);
-      toast.error(err.message || "Could not update cart", { autoClose: 2500 });
+      toast.error(getErrorMessage(err, "Could not update cart"), {
+        autoClose: 2500,
+      });
     } finally {
       setLoadingId(null);
     }

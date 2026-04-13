@@ -9,6 +9,7 @@ import { faWhatsapp } from "@fortawesome/free-brands-svg-icons";
 import { onAuthStateChanged, User, signOut } from "firebase/auth";
 import { auth } from "../firebaseClient";
 import styles from "./cart.module.css";
+import { getErrorMessage } from "@/lib/error-utils";
 
 // Define a TypeScript interface for your cart items
 interface CartItem {
@@ -17,6 +18,10 @@ interface CartItem {
   price: number;
   quantity: number;
   image?: string; // Optional image field
+}
+
+interface CartResponse {
+  items?: CartItem[];
 }
 
 export default function CartPage() {
@@ -82,7 +87,7 @@ useEffect(() => {
       // ② get the user’s saved cart
       const res = await fetch(`${API_BASE}/api/cart?userId=${user.uid}`);
       if (!res.ok) throw new Error("Failed to fetch cart");
-      const data = await res.json();
+      const data: CartResponse = await res.json();
 
       // ③ for every item that has no image yet, look it up
       const itemsWithImg: CartItem[] = await Promise.all(
@@ -101,9 +106,10 @@ useEffect(() => {
       );
 
       setCartItems(itemsWithImg);
-    } catch (err: any) {
-      console.error("Error fetching cart:", err.message || err);
-      setError(err.message || "Unable to fetch cart data.");
+    } catch (err: unknown) {
+      const message = getErrorMessage(err, "Unable to fetch cart data.");
+      console.error("Error fetching cart:", message);
+      setError(message);
       setCartItems([]); // fallback to empty
     } finally {
       setCartLoading(false);
@@ -265,7 +271,7 @@ useEffect(() => {
         <div className={styles.logo}>RANI RIWAAJ</div>
         <div className={styles.desktopNavLinks}>
           <Link href="/">Home</Link>
-          <Link href="/shop">Shop</Link>
+          <Link href="/#shop">Shop</Link>
           <Link href="/about">About Us</Link>
           <Link href="/contact">Contact</Link>
         </div>

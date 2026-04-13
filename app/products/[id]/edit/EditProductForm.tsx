@@ -4,6 +4,7 @@
 import { useState, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Save, X, Loader2 } from "lucide-react";
+import { getErrorMessage } from "@/lib/error-utils";
 
 interface Props {
   product: {
@@ -68,8 +69,8 @@ export default function EditProductForm({ product }: Props) {
       );
       if (!res.ok) throw new Error(await res.text());
       router.push("/admin/products");
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(getErrorMessage(err));
     } finally {
       setSaving(false);
     }

@@ -17,6 +17,14 @@ import { auth } from "@/app/firebaseClient";          // ← adjust if auth is e
 import styles from "./SiteHeader.module.css";
 import { useWishlist } from "@/lib/useWishlist";
 
+interface CartSummaryItem {
+  quantity: number;
+}
+
+interface CartSummaryResponse {
+  items?: CartSummaryItem[];
+}
+
 type Props = {
   /** allow the page to pass cartCount if you fetch it there */
   initialCartCount?: number;
@@ -56,14 +64,14 @@ export default function Header({ initialCartCount = 0 }: Props) {
           `https://rani-riwaaj-backend-ylbq.vercel.app/api/cart?userId=${user.uid}`
         );
         if (res.ok) {
-          const data = await res.json();
+          const data: CartSummaryResponse = await res.json();
           const total = (data.items ?? []).reduce(
-            (acc: number, it: any) => acc + it.quantity,
+            (acc, item) => acc + item.quantity,
             0
           );
           setCartCount(total);
         }
-      } catch (e) {
+      } catch {
         // ignore network errors silently for header
       }
     }
@@ -196,7 +204,7 @@ export default function Header({ initialCartCount = 0 }: Props) {
         <div className={styles.mobileLinks}>
           <Link href="/about" onClick={closeMobile}>About</Link>
           <Link href="/contact" onClick={closeMobile}>Contact</Link>
-          <Link href="/shop" onClick={closeMobile}>Shop</Link>
+          <Link href="/#shop" onClick={closeMobile}>Shop</Link>
           <Link href="/faqs" onClick={closeMobile}>FAQs</Link>
         </div>
 
