@@ -24,6 +24,10 @@
   --admin-radius-md: 1rem;
   --admin-radius-sm: 0.85rem;
   min-height: 100vh;
+  min-height: 100dvh;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
   color: var(--admin-ink);
   font-family: var(--font-admin-sans), Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   color-scheme: light;
@@ -51,26 +55,35 @@
 .rr-admin-root--login {
   display: grid;
   min-height: 100vh;
+  min-height: 100dvh;
+  height: auto;
+  overflow: clip;
 }
 
 .rr-admin-shell {
   display: grid;
   grid-template-columns: 290px minmax(0, 1fr);
-  min-height: 100vh;
+  min-height: 100%;
+  height: 100%;
+  overflow: hidden;
+  align-items: stretch;
 }
 
 .rr-admin-sidebar {
-  position: sticky;
-  top: 0;
+  position: relative;
   display: grid;
   gap: 1.2rem;
   align-content: start;
-  height: 100vh;
+  min-height: 0;
+  height: 100%;
   padding: 1.35rem 1.15rem;
   border-right: 1px solid var(--admin-line);
   background:
     linear-gradient(180deg, rgba(248, 251, 255, 0.96), rgba(238, 245, 255, 0.96));
   backdrop-filter: blur(22px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
 }
 
 .rr-admin-sidebarHeader {
@@ -328,8 +341,14 @@
 
 .rr-admin-main {
   min-width: 0;
+  min-height: 0;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
+  height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable both-edges;
+  scroll-behavior: smooth;
 }
 
 .rr-admin-topbar {
@@ -395,7 +414,9 @@
 
 .rr-admin-content {
   min-width: 0;
+  min-height: 0;
   padding: 1.6rem;
+  padding-bottom: max(1.6rem, env(safe-area-inset-bottom));
 }
 
 .rr-admin-page {
@@ -894,6 +915,31 @@
   animation: rr-admin-spin 0.9s linear infinite;
 }
 
+.rr-admin-sidebar::-webkit-scrollbar,
+.rr-admin-main::-webkit-scrollbar {
+  width: 0.85rem;
+  height: 0.85rem;
+}
+
+.rr-admin-sidebar::-webkit-scrollbar-track,
+.rr-admin-main::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.32);
+}
+
+.rr-admin-sidebar::-webkit-scrollbar-thumb,
+.rr-admin-main::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(37, 99, 235, 0.34), rgba(6, 182, 212, 0.26));
+  background-clip: padding-box;
+}
+
+.rr-admin-sidebar::-webkit-scrollbar-thumb:hover,
+.rr-admin-main::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(37, 99, 235, 0.48), rgba(6, 182, 212, 0.38));
+  background-clip: padding-box;
+}
+
 @keyframes admin-enter {
   from {
     opacity: 0;
@@ -956,6 +1002,8 @@
     bottom: 0;
     z-index: 50;
     width: min(86vw, 20rem);
+    height: 100vh;
+    height: 100dvh;
     transform: translateX(-102%);
     transition: transform 0.22s ease;
   }
