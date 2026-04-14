@@ -384,6 +384,13 @@ export default function AnalyticsPage() {
     const mappedTagProducts = products.filter((product) =>
       hasKnownTags(product, tagIds, tagIndexAvailable)
     );
+    const productsWithoutTags = products.filter(
+      (product) => !hasKnownTags(product, tagIds, tagIndexAvailable)
+    );
+    const productsWithoutCategory = products.filter(
+      (product) => !hasKnownCategory(product, categoryIds, categoryIndexAvailable)
+    );
+    const productsWithoutVariants = products.filter((product) => !hasVariants(product));
     const brokenCategoryLinks = products.filter(
       (product) =>
         Boolean(product.category) &&
@@ -511,6 +518,21 @@ export default function AnalyticsPage() {
       { name: "Published", value: publishedProducts.length },
       { name: "Draft", value: draftProducts.length },
     ].filter((entry) => entry.value > 0);
+    const mappingHealth = [
+      { name: "Mapped", value: categorizedProducts.length },
+      {
+        name: "Unassigned",
+        value: products.filter((product) => !product.category).length,
+      },
+      { name: "Broken", value: brokenCategoryLinks.length },
+    ].filter((entry) => entry.value > 0);
+    const stateMix = [
+      { name: "Published", value: publishedProducts.length },
+      { name: "Draft", value: draftProducts.length },
+      { name: "No tags", value: productsWithoutTags.length },
+      { name: "No category", value: productsWithoutCategory.length },
+      { name: "No variants", value: productsWithoutVariants.length },
+    ].filter((entry) => entry.value > 0);
 
     const topValueProducts = [...products]
       .map((product) => ({
@@ -609,6 +631,8 @@ export default function AnalyticsPage() {
       categoryMix,
       priceBands,
       publicationSplit,
+      mappingHealth,
+      stateMix,
       qualityBreakdown: qualityBreakdown.filter((entry) => entry.value > 0),
       topValueProducts,
       attentionProducts,
@@ -1010,6 +1034,8 @@ export default function AnalyticsPage() {
           publicationSplit={analytics.publicationSplit}
           categoryMix={analytics.categoryMix}
           priceBands={analytics.priceBands}
+          mappingHealth={analytics.mappingHealth}
+          stateMix={analytics.stateMix}
           qualityBreakdown={analytics.qualityBreakdown}
           topValueProducts={analytics.topValueProducts}
           tagUsage={analytics.tagUsage}
