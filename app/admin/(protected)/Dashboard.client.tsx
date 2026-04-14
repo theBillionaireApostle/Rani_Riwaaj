@@ -11,6 +11,7 @@ import React, {
 import Link from "next/link";
 import Image from "next/image";
 import {
+  Eye,
   PencilLine,
   Plus,
   Search,
@@ -70,6 +71,8 @@ export default function Dashboard({
   const [products, setProducts] = useState<Product[]>(initialProducts);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
+  const [deletingProductId, setDeletingProductId] = useState<string | null>(null);
 
   const [categories, setCategories] = useState<{ _id: string; name: string }[]>([]);
   const [categorySearch, setCategorySearch] = useState("");
@@ -184,6 +187,10 @@ const filteredCategories = useMemo(() => {
     return filteredProducts.slice(startIndex, startIndex + itemsPerPage);
   }, [filteredProducts, currentPage]);
 
+  useEffect(() => {
+    setCurrentPage((page) => Math.min(page, Math.max(totalPages, 1)));
+  }, [totalPages]);
+
   const publishedCount = useMemo(
     () => products.filter((product) => product.published).length,
     [products]
@@ -228,11 +235,17 @@ const filteredCategories = useMemo(() => {
   const imageCoverage = products.length
     ? Math.round((withImageCount / products.length) * 100)
     : 0;
+  const publishedCoverage = products.length
+    ? Math.round((publishedCount / products.length) * 100)
+    : 0;
   const categoryCoverage = products.length
     ? Math.round((withCategoryCount / products.length) * 100)
     : 0;
   const tagCoverage = products.length
     ? Math.round((withTagsCount / products.length) * 100)
+    : 0;
+  const merchandisingCoverage = products.length
+    ? Math.round((withVariantsCount / products.length) * 100)
     : 0;
 
   const spotlightProducts = useMemo(
@@ -242,7 +255,7 @@ const filteredCategories = useMemo(() => {
         .slice(0, 3),
     [products]
   );
-  const attentionProducts = useMemo(
+  const attentionQueue = useMemo(
     () =>
       products
         .filter(
@@ -251,10 +264,33 @@ const filteredCategories = useMemo(() => {
             !product.defaultImage?.url ||
             !(product.desc ?? "").trim() ||
             !product.category
-        )
-        .slice(0, 4),
+        ),
     [products]
   );
+  const attentionQueueCount = attentionQueue.length;
+  const attentionProducts = useMemo(() => attentionQueue.slice(0, 4), [attentionQueue]);
+  const heroSummary = attentionQueueCount
+    ? `${products.length} products, ${publishedCount} live, ${draftCount} drafts. ${attentionQueueCount} ${
+        attentionQueueCount === 1 ? "item needs" : "items need"
+      } publishing cleanup.`
+    : `${products.length} products, ${publishedCount} live, ${draftCount} drafts. The catalog is structurally ready for the next merchandising push.`;
+  const heroSignals = [
+    {
+      label: "Publishing",
+      value: `${publishedCoverage}%`,
+      detail: `${publishedCount} products live`,
+    },
+    {
+      label: "Taxonomy",
+      value: `${categoryCoverage}%`,
+      detail: `${withCategoryCount} category-linked`,
+    },
+    {
+      label: "Merchandising",
+      value: `${merchandisingCoverage}%`,
+      detail: `${withVariantsCount} with variants`,
+    },
+  ];
 
   // --- Handlers ---
   const openModal = useCallback(() => setModalOpen(true), []);
@@ -341,19 +377,33 @@ const filteredCategories = useMemo(() => {
     }
   }, [formValues.colors, currentColor]);
 
-  const handleDelete = useCallback(async (productId: string) => {
-    if (!confirm("Are you sure you want to delete this product?")) return;
+  const handleDelete = useCallback(async () => {
+    if (!deleteTarget) return;
+
+    setDeletingProductId(deleteTarget._id);
     try {
-      const res = await fetch(`https://rani-riwaaj-backend-ylbq.vercel.app/api/products/${productId}`, { method: "DELETE" });
+      const res = await fetch(
+        `https://rani-riwaaj-backend-ylbq.vercel.app/api/products/${deleteTarget._id}`,
+        { method: "DELETE" }
+      );
       if (!res.ok) throw new Error("Failed to delete the product");
-      setProducts((prev) => prev.filter((p) => p._id !== productId));
-      if (!toast.isActive("delete-" + productId))
-        toast.success("Product deleted successfully.", { toastId: "delete-" + productId, autoClose: 3000 });
+      setProducts((prev) => prev.filter((p) => p._id !== deleteTarget._id));
+      setDeleteTarget(null);
+      if (!toast.isActive("delete-" + deleteTarget._id))
+        toast.success("Product deleted successfully.", {
+          toastId: "delete-" + deleteTarget._id,
+          autoClose: 3000,
+        });
     } catch (error: unknown) {
-      if (!toast.isActive("delete-error-" + productId))
-        toast.error(getErrorMessage(error, "Error deleting product."), { toastId: "delete-error-" + productId, autoClose: 3000 });
+      if (!toast.isActive("delete-error-" + deleteTarget._id))
+        toast.error(getErrorMessage(error, "Error deleting product."), {
+          toastId: "delete-error-" + deleteTarget._id,
+          autoClose: 3000,
+        });
+    } finally {
+      setDeletingProductId(null);
     }
-  }, []);
+  }, [deleteTarget]);
 
   const handleToggle = useCallback(async (product: Product) => {
     try {
@@ -516,23 +566,38 @@ const filteredCategories = useMemo(() => {
       <section className={styles.hero}>
         <div className={styles.heroLead}>
           <span className={styles.heroEyebrow}>Catalog</span>
-          <h1 className={styles.heroTitle}>Catalog operations.</h1>
-          <p className={styles.heroText}>
-            Live product status, media coverage, taxonomy, and publish controls.
-          </p>
+          <h1 className={styles.heroTitle}>Catalog command center.</h1>
+          <p className={styles.heroText}>{heroSummary}</p>
           <div className={styles.heroActions}>
+            <button
+              type="button"
+              onClick={openModal}
+              className="rr-admin-button rr-admin-button--primary"
+            >
+              <Plus size={16} />
+              New Product
+            </button>
             <Link
               href="/admin/analytics"
-              className="rr-admin-button rr-admin-button--primary"
+              className="rr-admin-button rr-admin-button--secondary"
             >
               Open Analytics
             </Link>
             <Link
-              href="/admin/products/create"
-              className="rr-admin-button rr-admin-button--secondary"
+              href="/"
+              className="rr-admin-button rr-admin-button--ghost"
             >
-              Create Product
+              View Store
             </Link>
+          </div>
+          <div className={styles.heroSignalRail}>
+            {heroSignals.map((signal) => (
+              <article key={signal.label} className={styles.heroSignal}>
+                <span className={styles.heroSignalLabel}>{signal.label}</span>
+                <strong className={styles.heroSignalValue}>{signal.value}</strong>
+                <p className={styles.heroSignalText}>{signal.detail}</p>
+              </article>
+            ))}
           </div>
         </div>
 
@@ -709,9 +774,26 @@ const filteredCategories = useMemo(() => {
                     />
                   </div>
                   <div className={styles.productDetails}>
-                    <h2 className={styles.productName}>{product.name}</h2>
-                    <p className={styles.productDesc}>{product.desc}</p>
-                    <p className={styles.productPrice}>Price: {product.price}</p>
+                    <div className={styles.productSummary}>
+                      <div>
+                        <h2 className={styles.productName}>{product.name}</h2>
+                        <p className={styles.productDesc}>
+                          {product.desc || "Description pending for this product."}
+                        </p>
+                      </div>
+                      <div className={styles.productMetrics}>
+                        <p className={styles.productPrice}>
+                          ₹{parsePrice(product.price).toLocaleString("en-IN")}
+                        </p>
+                        <p className={styles.productAssist}>
+                          {(product.colors?.length ?? 0) > 0 || (product.sizes?.length ?? 0) > 0
+                            ? `${product.colors?.length ?? 0} colors · ${
+                                product.sizes?.length ?? 0
+                              } sizes`
+                            : "Variant setup pending"}
+                        </p>
+                      </div>
+                    </div>
                     <div className={styles.productMeta}>
                       <span
                         className={`rr-admin-badge ${
@@ -723,6 +805,15 @@ const filteredCategories = useMemo(() => {
                         {product.published ? "Published" : "Draft"}
                       </span>
                       <span className="rr-admin-badge rr-admin-badge--info">
+                        {product.defaultImage?.url ? "Hero ready" : "Hero pending"}
+                      </span>
+                      <span
+                        className={`rr-admin-badge ${
+                          product.category
+                            ? "rr-admin-badge--info"
+                            : "rr-admin-badge--warning"
+                        }`}
+                      >
                         {product.category ? "Category linked" : "Category pending"}
                       </span>
                       <span className="rr-admin-badge rr-admin-badge--info">
@@ -741,6 +832,15 @@ const filteredCategories = useMemo(() => {
                   </div>
                   <div className={styles.actionButtons}>
                     <Link
+                      href={`/products/${product._id}`}
+                      title="Preview storefront"
+                      className={styles.iconButton}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      <Eye size={16} />
+                    </Link>
+                    <Link
                       href={`/admin/products/${product._id}/edit`}
                       title="Edit"
                       className={styles.iconButton}
@@ -748,9 +848,10 @@ const filteredCategories = useMemo(() => {
                       <PencilLine size={16} />
                     </Link>
                     <button
-                      onClick={() => handleDelete(product._id)}
+                      onClick={() => setDeleteTarget(product)}
                       className={styles.iconButton}
                       title="Delete"
+                      disabled={deletingProductId === product._id}
                     >
                       <Trash2 size={16} />
                     </button>
@@ -979,6 +1080,49 @@ const filteredCategories = useMemo(() => {
           </form>
         </ModalComp>
       )}
+      {deleteTarget ? (
+        <div className="rr-admin-modalBackdrop">
+          <div className="rr-admin-modal">
+            <div className="rr-admin-modalHeader">
+              <div>
+                <h2 className="rr-admin-modalTitle">Delete product</h2>
+                <p className="rr-admin-panelText">
+                  Remove <strong>{deleteTarget.name}</strong> from the catalog. This also removes
+                  its current publish state, merchandising surface, and quick access from the admin
+                  desk.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="rr-admin-iconButton"
+                onClick={() => setDeleteTarget(null)}
+                disabled={deletingProductId === deleteTarget._id}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="rr-admin-modalActions">
+              <button
+                type="button"
+                className="rr-admin-button rr-admin-button--ghost"
+                onClick={() => setDeleteTarget(null)}
+                disabled={deletingProductId === deleteTarget._id}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="rr-admin-button rr-admin-button--danger"
+                onClick={() => void handleDelete()}
+                disabled={deletingProductId === deleteTarget._id}
+              >
+                {deletingProductId === deleteTarget._id ? "Deleting..." : "Delete product"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
       {isOffline && <OfflineModalComp onRetry={() => window.location.reload()} />}
     </div>
   );

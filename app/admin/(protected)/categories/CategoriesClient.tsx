@@ -33,6 +33,7 @@ export interface Category {
 
 interface ProductPreview {
   _id: string;
+  category?: string;
   name: string;
   price: string | number;
   desc?: string;
@@ -78,16 +79,32 @@ export default function CategoriesClient({ initialCategories }: Props) {
   const [page, setPage] = useState(1);
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [products, setProducts] = useState<ProductPreview[]>([]);
+  const [allProducts, setAllProducts] = useState<ProductPreview[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState("");
   const [draft, setDraft] = useState<Partial<Category>>({});
+  const [deleteTarget, setDeleteTarget] = useState<Category | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   const perPage = 6;
+
+  useEffect(() => {
+    fetch(`${BACKEND_BASE}/api/products`, {
+      headers: authHeaders(),
+    })
+      .then((response) =>
+        response.ok ? response.json() : Promise.reject(new Error("Failed to load products"))
+      )
+      .then((data: ProductPreview[]) => setAllProducts(data))
+      .catch((err: unknown) =>
+        toast.error(getErrorMessage(err, "Could not load category coverage data."))
+      );
+  }, []);
 
   useEffect(() => {
     if (!selectedCategory) return;
@@ -117,6 +134,9 @@ export default function CategoriesClient({ initialCategories }: Props) {
   );
 
   const totalPages = Math.max(1, Math.ceil(filteredCategories.length / perPage));
+  useEffect(() => {
+    setPage((current) => Math.min(current, totalPages));
+  }, [totalPages]);
   const visibleCategories = useMemo(
     () => filteredCategories.slice((page - 1) * perPage, page * perPage),
     [filteredCategories, page]
@@ -126,6 +146,32 @@ export default function CategoriesClient({ initialCategories }: Props) {
   const categoriesWithDescription = categories.filter(
     (category) => (category.description ?? "").trim().length > 0
   ).length;
+  const categoryMetrics = useMemo(() => {
+    const metrics = new Map<string, { total: number; live: number; draft: number }>();
+
+    categories.forEach((category) => {
+      metrics.set(category._id, { total: 0, live: 0, draft: 0 });
+    });
+
+    allProducts.forEach((product) => {
+      if (!product.category) return;
+      const current = metrics.get(product.category) ?? { total: 0, live: 0, draft: 0 };
+      current.total += 1;
+      if (product.published) {
+        current.live += 1;
+      } else {
+        current.draft += 1;
+      }
+      metrics.set(product.category, current);
+    });
+
+    return metrics;
+  }, [allProducts, categories]);
+  const mappedCategoriesCount = useMemo(
+    () =>
+      categories.filter((category) => (categoryMetrics.get(category._id)?.total ?? 0) > 0).length,
+    [categories, categoryMetrics]
+  );
 
   const resetModal = useCallback(() => {
     setModalOpen(false);
@@ -232,11 +278,12 @@ export default function CategoriesClient({ initialCategories }: Props) {
     [draft, imageFile, isEditing, resetModal]
   );
 
-  const handleDelete = useCallback(async (id: string) => {
-    if (!confirm("Delete this category?")) return;
+  const handleDelete = useCallback(async () => {
+    if (!deleteTarget) return;
 
+    setDeleting(true);
     try {
-      const response = await fetch(`${BACKEND_BASE}/api/categories/${id}`, {
+      const response = await fetch(`${BACKEND_BASE}/api/categories/${deleteTarget._id}`, {
         method: "DELETE",
         headers: authHeaders(),
       });
@@ -245,14 +292,22 @@ export default function CategoriesClient({ initialCategories }: Props) {
         throw new Error(await response.text());
       }
 
-      setCategories((current) => current.filter((category) => category._id !== id));
+      setCategories((current) =>
+        current.filter((category) => category._id !== deleteTarget._id)
+      );
+      setDeleteTarget(null);
       toast.success("Category deleted.");
     } catch (err: unknown) {
       toast.error(getErrorMessage(err, "Delete failed."));
+    } finally {
+      setDeleting(false);
     }
-  }, []);
+  }, [deleteTarget]);
 
   if (selectedCategory) {
+    const liveProducts = products.filter((product) => product.published).length;
+    const draftProducts = products.length - liveProducts;
+
     return (
       <section className="rr-admin-page">
         <div className="rr-admin-pageIntro">
@@ -260,7 +315,8 @@ export default function CategoriesClient({ initialCategories }: Props) {
             <span className="rr-admin-kicker">Category View</span>
             <h1 className="rr-admin-pageTitle">{selectedCategory.name}</h1>
             <p className="rr-admin-pageDescription">
-              Review mapped products and jump into edits.
+              Review mapped products, live coverage, and editing priorities for /
+              {selectedCategory.slug}.
             </p>
           </div>
           <div className="rr-admin-actions">
@@ -282,16 +338,14 @@ export default function CategoriesClient({ initialCategories }: Props) {
             <span className="rr-admin-statMeta">Currently linked to this category.</span>
           </article>
           <article className="rr-admin-statCard">
-            <span className="rr-admin-statLabel">Slug</span>
-            <strong className="rr-admin-statValue">/{selectedCategory.slug}</strong>
-            <span className="rr-admin-statMeta">Storefront path reference.</span>
+            <span className="rr-admin-statLabel">Live</span>
+            <strong className="rr-admin-statValue">{liveProducts}</strong>
+            <span className="rr-admin-statMeta">Published products in this category.</span>
           </article>
           <article className="rr-admin-statCard">
-            <span className="rr-admin-statLabel">Description</span>
-            <strong className="rr-admin-statValue">
-              {selectedCategory.description ? "Present" : "Missing"}
-            </strong>
-            <span className="rr-admin-statMeta">Used to explain the category clearly.</span>
+            <span className="rr-admin-statLabel">Draft</span>
+            <strong className="rr-admin-statValue">{draftProducts}</strong>
+            <span className="rr-admin-statMeta">Products still waiting on publish readiness.</span>
           </article>
           <article className="rr-admin-statCard">
             <span className="rr-admin-statLabel">Cover image</span>
@@ -376,7 +430,7 @@ export default function CategoriesClient({ initialCategories }: Props) {
           <span className="rr-admin-kicker">Structure</span>
           <h1 className="rr-admin-pageTitle">Categories</h1>
           <p className="rr-admin-pageDescription">
-            Keep category structure clean and mapped.
+            Keep category structure clean, merchandised, and mapped to live products.
           </p>
         </div>
         <div className="rr-admin-actions">
@@ -408,9 +462,9 @@ export default function CategoriesClient({ initialCategories }: Props) {
           <span className="rr-admin-statMeta">Useful for context and SEO.</span>
         </article>
         <article className="rr-admin-statCard">
-          <span className="rr-admin-statLabel">Visible right now</span>
-          <strong className="rr-admin-statValue">{filteredCategories.length}</strong>
-          <span className="rr-admin-statMeta">Matching the current search filter.</span>
+          <span className="rr-admin-statLabel">In use</span>
+          <strong className="rr-admin-statValue">{mappedCategoriesCount}</strong>
+          <span className="rr-admin-statMeta">Categories already linked to products.</span>
         </article>
       </div>
 
@@ -457,68 +511,101 @@ export default function CategoriesClient({ initialCategories }: Props) {
           </div>
         ) : (
           <div className={styles.categoryGrid}>
-            {visibleCategories.map((category) => (
-              <article key={category._id} className={styles.categoryCard}>
-                <button
-                  type="button"
-                  className={styles.categoryMedia}
-                  onClick={() => setSelectedCategory(category)}
-                >
-                  <Image
-                    src={category.image?.url || "/cat-placeholder.png"}
-                    alt={category.name}
-                    fill
-                    sizes="(max-width: 768px) 100vw, 280px"
-                    style={{ objectFit: "cover" }}
-                  />
-                </button>
-                <div className={styles.categoryBody}>
-                  <div className={styles.categoryHeader}>
-                    <div>
-                      <h3>{category.name}</h3>
-                      <p>/{category.slug}</p>
+            {visibleCategories.map((category) => {
+              const metrics = categoryMetrics.get(category._id) ?? {
+                total: 0,
+                live: 0,
+                draft: 0,
+              };
+
+              return (
+                <article key={category._id} className={styles.categoryCard}>
+                  <button
+                    type="button"
+                    className={styles.categoryMedia}
+                    onClick={() => setSelectedCategory(category)}
+                  >
+                    <Image
+                      src={category.image?.url || "/cat-placeholder.png"}
+                      alt={category.name}
+                      fill
+                      sizes="(max-width: 768px) 100vw, 280px"
+                      style={{ objectFit: "cover" }}
+                    />
+                  </button>
+                  <div className={styles.categoryBody}>
+                    <div className={styles.categoryHeader}>
+                      <div>
+                        <h3>{category.name}</h3>
+                        <p>/{category.slug}</p>
+                      </div>
+                      <div className={styles.categoryActions}>
+                        <button
+                          type="button"
+                          className="rr-admin-iconButton"
+                          onClick={() => openEdit(category)}
+                        >
+                          <Pencil size={16} />
+                        </button>
+                        <button
+                          type="button"
+                          className="rr-admin-iconButton"
+                          onClick={() => setDeleteTarget(category)}
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
                     </div>
-                    <div className={styles.categoryActions}>
+                    <p className={styles.categoryText}>
+                      {category.description || "No description added yet."}
+                    </p>
+                    <div className={styles.categoryMetrics}>
+                      <div className={styles.categoryMetric}>
+                        <span className={styles.categoryMetricLabel}>Products</span>
+                        <strong className={styles.categoryMetricValue}>{metrics.total}</strong>
+                      </div>
+                      <div className={styles.categoryMetric}>
+                        <span className={styles.categoryMetricLabel}>Live</span>
+                        <strong className={styles.categoryMetricValue}>{metrics.live}</strong>
+                      </div>
+                      <div className={styles.categoryMetric}>
+                        <span className={styles.categoryMetricLabel}>Draft</span>
+                        <strong className={styles.categoryMetricValue}>{metrics.draft}</strong>
+                      </div>
+                    </div>
+                    <div className={styles.categoryFooter}>
+                      <div className={styles.categoryMetaRail}>
+                        <span
+                          className={`rr-admin-badge ${
+                            category.image?.url
+                              ? "rr-admin-badge--success"
+                              : "rr-admin-badge--warning"
+                          }`}
+                        >
+                          {category.image?.url ? "Image ready" : "Image pending"}
+                        </span>
+                        <span
+                          className={`rr-admin-badge ${
+                            metrics.total > 0
+                              ? "rr-admin-badge--info"
+                              : "rr-admin-badge--warning"
+                          }`}
+                        >
+                          {metrics.total > 0 ? "Mapped to catalog" : "No products yet"}
+                        </span>
+                      </div>
                       <button
                         type="button"
-                        className="rr-admin-iconButton"
-                        onClick={() => openEdit(category)}
+                        className="rr-admin-button rr-admin-button--secondary"
+                        onClick={() => setSelectedCategory(category)}
                       >
-                        <Pencil size={16} />
-                      </button>
-                      <button
-                        type="button"
-                        className="rr-admin-iconButton"
-                        onClick={() => handleDelete(category._id)}
-                      >
-                        <Trash2 size={16} />
+                        Open desk
                       </button>
                     </div>
                   </div>
-                  <p className={styles.categoryText}>
-                    {category.description || "No description added yet."}
-                  </p>
-                  <div className={styles.categoryFooter}>
-                    <span
-                      className={`rr-admin-badge ${
-                        category.image?.url
-                          ? "rr-admin-badge--success"
-                          : "rr-admin-badge--warning"
-                      }`}
-                    >
-                      {category.image?.url ? "Image ready" : "Image pending"}
-                    </span>
-                    <button
-                      type="button"
-                      className="rr-admin-button rr-admin-button--secondary"
-                      onClick={() => setSelectedCategory(category)}
-                    >
-                      View products
-                    </button>
-                  </div>
-                </div>
-              </article>
-            ))}
+                </article>
+              );
+            })}
           </div>
         )}
 
@@ -648,6 +735,48 @@ export default function CategoriesClient({ initialCategories }: Props) {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      ) : null}
+      {deleteTarget ? (
+        <div className="rr-admin-modalBackdrop">
+          <div className="rr-admin-modal">
+            <div className="rr-admin-modalHeader">
+              <div>
+                <h2 className="rr-admin-modalTitle">Delete category</h2>
+                <p className="rr-admin-panelText">
+                  Remove <strong>{deleteTarget.name}</strong> from the admin taxonomy. Products
+                  currently mapped here may need recategorization afterward.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="rr-admin-iconButton"
+                onClick={() => setDeleteTarget(null)}
+                disabled={deleting}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="rr-admin-modalActions">
+              <button
+                type="button"
+                className="rr-admin-button rr-admin-button--ghost"
+                onClick={() => setDeleteTarget(null)}
+                disabled={deleting}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="rr-admin-button rr-admin-button--danger"
+                onClick={() => void handleDelete()}
+                disabled={deleting}
+              >
+                {deleting ? "Deleting..." : "Delete category"}
+              </button>
+            </div>
           </div>
         </div>
       ) : null}

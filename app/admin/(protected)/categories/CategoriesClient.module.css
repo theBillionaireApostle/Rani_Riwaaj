@@ -23,6 +23,17 @@
   border: 1px solid var(--admin-line);
   border-radius: 1.3rem;
   background: rgba(255, 255, 255, 0.84);
+  transition:
+    transform 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.categoryCard:hover,
+.productCard:hover {
+  transform: translateY(-2px);
+  border-color: rgba(37, 99, 235, 0.18);
+  box-shadow: 0 18px 34px rgba(15, 23, 42, 0.08);
 }
 
 .categoryMedia,
@@ -87,6 +98,44 @@
   min-height: 3.1rem;
 }
 
+.categoryMetrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.categoryMetric {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.75rem 0.8rem;
+  border: 1px solid var(--admin-line);
+  border-radius: 1rem;
+  background: rgba(246, 250, 255, 0.86);
+}
+
+.categoryMetricLabel {
+  color: var(--admin-muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.categoryMetricValue {
+  color: var(--admin-ink);
+  font-family: var(--font-admin-display), var(--font-admin-sans), sans-serif;
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.categoryMetaRail {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+
 .productFooter strong {
   color: var(--admin-ink);
 }
@@ -111,6 +160,10 @@
 @media (max-width: 720px) {
   .categoryGrid,
   .productGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .categoryMetrics {
     grid-template-columns: minmax(0, 1fr);
   }
 
